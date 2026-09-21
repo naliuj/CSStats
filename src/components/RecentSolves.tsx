@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card } from './Card';
-import { formatTime } from '../lib/format';
+import { formatSingle, formatTime } from '../lib/format';
 import type { Stats } from '../lib/stats';
 
 const PAGE = 25;
@@ -33,7 +33,7 @@ export function RecentSolves({ stats }: { stats: Stats }) {
                 <tr key={i}>
                   <td className="muted">{(i + 1).toLocaleString()}</td>
                   <td className={i === stats.single.bestIndex ? 'best' : ''}>
-                    {s.penalty === -1 ? `DNF(${formatTime(s.raw)})` : formatTime(s.time) + (s.penalty ? '+' : '')}
+                    {s.penalty === -1 ? `DNF(${formatSingle(s.raw)})` : formatSingle(s.time) + (s.penalty ? '+' : '')}
                   </td>
                   <td>{formatTime(stats.rolling.ao5[i])}</td>
                   <td>{formatTime(stats.rolling.ao12[i])}</td>

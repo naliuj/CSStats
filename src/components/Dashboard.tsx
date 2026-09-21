@@ -11,6 +11,7 @@ import { PBHistory } from './PBHistory';
 import { CalendarHeatmap } from './CalendarHeatmap';
 import { TimeOfDay, WeeklyVolume } from './Habits';
 import { RecentSolves } from './RecentSolves';
+import { CommonTimes, LastDigit } from './CommonTimes';
 
 function parseDay(s: string, endOfDay: boolean): number {
   const [y, m, d] = s.split('-').map(Number);
@@ -65,6 +66,8 @@ export function Dashboard({ sessions, p }: { sessions: Session[]; p: Palette }) 
             <TrendChart stats={stats} p={p} />
             <Histogram stats={stats} p={p} />
             <PBHistory stats={stats} p={p} />
+            <CommonTimes stats={stats} />
+            <LastDigit stats={stats} p={p} />
             <CalendarHeatmap stats={stats} p={p} />
             <TimeOfDay stats={stats} p={p} />
             <WeeklyVolume stats={stats} p={p} />

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Chart } from './Chart';
 import { Card } from './Card';
 import { axis, base, swatch, timeTick } from '../chartStyle';
-import { formatDate, formatTime } from '../lib/format';
+import { formatDate, formatSingle, formatTime } from '../lib/format';
 import { pbProgression } from '../lib/pbs';
 import type { Stats } from '../lib/stats';
 import type { Palette } from '../theme';
@@ -46,10 +46,12 @@ export function PBHistory({ stats, p }: { stats: Stats; p: Palette }) {
         tooltip: {
           ...base(p).tooltip,
           trigger: 'item',
-          formatter: ({ seriesName, data, color }: { seriesName: string; color: string; data: { value: [number, number]; index: number } }) =>
-            data.index < 0
-              ? `${swatch(color)}Current ${seriesName} PB <b>${formatTime(data.value[1])}</b>`
-              : `${swatch(color)}New ${seriesName} PB <b>${formatTime(data.value[1])}</b><br/><span style="color:${p.textSecondary}">${formatDate(data.value[0])} · solve #${(data.index + 1).toLocaleString()}</span>`,
+          formatter: ({ seriesName, data, color }: { seriesName: string; color: string; data: { value: [number, number]; index: number } }) => {
+            const fmt = seriesName === 'single' ? formatSingle : formatTime;
+            return data.index < 0
+              ? `${swatch(color)}Current ${seriesName} PB <b>${fmt(data.value[1])}</b>`
+              : `${swatch(color)}New ${seriesName} PB <b>${fmt(data.value[1])}</b><br/><span style="color:${p.textSecondary}">${formatDate(data.value[0])} · solve #${(data.index + 1).toLocaleString()}</span>`;
+          },
         },
         xAxis: axis(p, { type: 'time', splitLine: { show: false } }),
         yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: timeTick } }),

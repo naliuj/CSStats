@@ -432,6 +432,35 @@ label:focus-within {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
+/* Most common times */
+.common {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.common th,
+.common td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+}
+.common th {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.common .bar-col {
+  width: 40%;
+  min-width: 48px;
+  text-align: left;
+}
+.common .bar {
+  height: 8px;
+  min-width: 2px;
+  border-radius: 0 4px 4px 0;
+  background: var(--accent);
+}
+
 /* Solves table */
 .solves {
   width: 100%;
@@ -490,6 +519,9 @@ label:focus-within {
   }
 }
 @media (max-width: 520px) {
+  .common .last-col {
+    display: none;
+  }
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

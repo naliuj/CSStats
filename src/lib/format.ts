@@ -1,8 +1,15 @@
-/** Format ms as csTimer does: "9.87", "1:02.34", "1:02:03.45"; DNF for Infinity; "–" for NaN. */
-export function formatTime(ms: number, decimals = 2): string {
+/**
+ * Format ms like csTimer: "9.87", "1:02.34", "1:02:03.45"; DNF for Infinity; "–" for NaN.
+ * Rounds half-up, which is how csTimer shows averages. Use formatSingle for single solves.
+ */
+export function formatTime(ms: number, decimals = 2, truncate = false): string {
   if (Number.isNaN(ms)) return '–';
   if (ms === Infinity) return 'DNF';
   const scale = 10 ** decimals;
+  if (truncate) {
+    const unit = 1000 / scale;
+    ms = Math.floor(ms / unit) * unit;
+  }
   const total = Math.round((ms / 1000) * scale) / scale;
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
@@ -13,6 +20,9 @@ export function formatTime(ms: number, decimals = 2): string {
   if (m) return `${m}:${sec}`;
   return sec;
 }
+
+/** A single solve time, truncated like csTimer does (12.268 → "12.26"). */
+export const formatSingle = (ms: number) => formatTime(ms, 2, true);
 
 /** Human duration for total practice time, e.g. "4d 3h", "5h 12m", "42m". */
 export function formatDuration(ms: number): string {

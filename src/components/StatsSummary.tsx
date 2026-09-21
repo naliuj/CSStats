@@ -1,5 +1,5 @@
 import { AVERAGES, type Stats } from '../lib/stats';
-import { formatDate, formatDuration, formatTime } from '../lib/format';
+import { formatDate, formatDuration, formatSingle, formatTime } from '../lib/format';
 
 function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -15,15 +15,15 @@ export function StatsSummary({ stats }: { stats: Stats }) {
   const { solves, single, best } = stats;
   const dateOf = (i: number) => (i >= 0 ? formatDate(solves[i].date) : '');
   const rows = [
-    { key: 'single', label: 'Single', bc: single },
-    ...AVERAGES.map((a) => ({ key: a.key, label: a.key, bc: best[a.key] })),
+    { key: 'single', label: 'Single', bc: single, fmt: formatSingle },
+    ...AVERAGES.map((a) => ({ key: a.key, label: a.key, bc: best[a.key], fmt: formatTime })),
   ].filter((r) => r.bc.bestIndex >= 0);
 
   return (
     <section className="summary">
       <div className="tiles">
         <Tile label="Solves" value={stats.count.toLocaleString()} sub={`${stats.activeDays.toLocaleString()} active days`} />
-        <Tile label="Best single" value={formatTime(single.best)} sub={dateOf(single.bestIndex)} />
+        <Tile label="Best single" value={formatSingle(single.best)} sub={dateOf(single.bestIndex)} />
         <Tile label="Best ao5" value={formatTime(best.ao5.best)} sub={dateOf(best.ao5.bestIndex)} />
         <Tile label="Best ao12" value={formatTime(best.ao12.best)} sub={dateOf(best.ao12.bestIndex)} />
         <Tile label="Mean" value={formatTime(stats.mean)} sub={`σ ${formatTime(stats.stdDev)}`} />
@@ -47,8 +47,8 @@ export function StatsSummary({ stats }: { stats: Stats }) {
             {rows.map((r) => (
               <tr key={r.key}>
                 <th scope="row">{r.label}</th>
-                <td>{formatTime(r.bc.current)}</td>
-                <td className="best">{formatTime(r.bc.best)}</td>
+                <td>{r.fmt(r.bc.current)}</td>
+                <td className="best">{r.fmt(r.bc.best)}</td>
                 <td className="muted">
                   {dateOf(r.bc.bestIndex)} <span className="solve-no">#{(r.bc.bestIndex + 1).toLocaleString()}</span>
                 </td>

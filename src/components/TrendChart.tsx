@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Chart } from './Chart';
 import { Card, Segmented } from './Card';
 import { axis, base, swatch, timeTick } from '../chartStyle';
-import { formatDate, formatTime } from '../lib/format';
+import { formatDate, formatSingle, formatTime } from '../lib/format';
 import { quantile, type AvgKey, type Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
@@ -69,7 +69,7 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
           const xv = items[0].value[0];
           const head = mode === 'index' ? `Solve #${xv.toLocaleString()}` : formatDate(xv);
           const rows = items
-            .map((it) => `${swatch(it.color)}${it.seriesName} <b style="float:right;margin-left:16px">${formatTime(it.value[1])}</b>`)
+            .map((it) => `${swatch(it.color)}${it.seriesName} <b style="float:right;margin-left:16px">${(it.seriesName === 'Solves' ? formatSingle : formatTime)(it.value[1])}</b>`)
             .join('<br/>');
           return `<div style="margin-bottom:4px;color:${p.textSecondary}">${head}</div>${rows}`;
         },

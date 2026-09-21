@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { parseExport, ParseError } from '../parse';
 import { average, bestAndCurrent, mean, rollingAverage, trimCount } from '../averages';
 import { pbProgression } from '../pbs';
-import { formatTime } from '../format';
+import { formatSingle, formatTime } from '../format';
 import { byHour, dayKey } from '../aggregate';
+import { exactTimeStats, lastDigitCounts } from '../exactTimes';
 
 const sample = JSON.stringify({
   session1: [
@@ -87,6 +88,13 @@ describe('format', () => {
     expect(formatTime(Infinity)).toBe('DNF');
     expect(formatTime(NaN)).toBe('–');
   });
+  it('truncates singles like csTimer', () => {
+    expect(formatSingle(12268)).toBe('12.26');
+    expect(formatSingle(59999)).toBe('59.99');
+    expect(formatSingle(62349)).toBe('1:02.34');
+    expect(formatSingle(Infinity)).toBe('DNF');
+    expect(formatTime(12265)).toBe('12.27');
+  });
 });
 
 describe('aggregate', () => {
@@ -95,5 +103,24 @@ describe('aggregate', () => {
     const h = byHour([{ time: 10, raw: 10, penalty: 0, scramble: '', comment: '', date: d }]);
     expect(h[13]).toEqual({ count: 1, mean: 10 });
     expect(dayKey(d)).toBe('2024-01-01');
+  });
+});
+
+describe('exactTimeStats', () => {
+  it('groups by displayed (truncated) hundredths, skipping DNFs', () => {
+    // 12268, 12264 and 12260 all display as 12.26 in csTimer; 12271 displays as 12.27.
+    const s = exactTimeStats([12268, 12271, 12264, Infinity, 9000, 12260], 10);
+    expect(s.total).toBe(5);
+    expect(s.ranked[0]).toEqual({ time: 12260, count: 3, lastIndex: 5 });
+    expect(formatSingle(s.ranked[0].time)).toBe('12.26');
+    expect(s.distinct).toBe(3);
+    expect(s.singletons).toBe(2);
+  });
+  it('supports tenths and breaks ties by recency', () => {
+    const s = exactTimeStats([9040, 12090, 12040, 9010], 100);
+    expect(s.ranked.map((r) => [r.time, r.count])).toEqual([[9000, 2], [12000, 2]]);
+  });
+  it('counts last digits', () => {
+    expect(lastDigitCounts([12268, 9000, 9009, Infinity])).toEqual([2, 0, 0, 0, 0, 0, 1, 0, 0, 0]);
   });
 });
