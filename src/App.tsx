@@ -52,7 +52,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo" aria-hidden="true" />
+          <img className="logo" src={`${import.meta.env.BASE_URL}cube.svg`} alt="" />
           <h1>CSStats</h1>
           {loaded && <span className="filename" title={loaded.name}>{loaded.name}</span>}
         </div>

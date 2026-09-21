@@ -118,13 +118,9 @@ main {
   letter-spacing: -0.01em;
 }
 .logo {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  background:
-    linear-gradient(90deg, transparent 30%, var(--bg) 30% 36%, transparent 36% 64%, var(--bg) 64% 70%, transparent 70%),
-    linear-gradient(0deg, transparent 30%, var(--bg) 30% 36%, transparent 36% 64%, var(--bg) 64% 70%, transparent 70%),
-    conic-gradient(#e34948 0 25%, #eda100 0 50%, #2a78d6 0 75%, #1baf7a 0);
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 .filename {
   color: var(--text-3);
