@@ -12,15 +12,30 @@ import { CalendarHeatmap } from './CalendarHeatmap';
 import { TimeOfDay, WeeklyVolume } from './Habits';
 import { RecentSolves } from './RecentSolves';
 import { CommonTimes, LastDigit } from './CommonTimes';
+import { SessionManager } from './SessionManager';
+import type { ApplyEdit } from '../App';
 
 function parseDay(s: string, endOfDay: boolean): number {
   const [y, m, d] = s.split('-').map(Number);
   return endOfDay ? new Date(y, m - 1, d + 1).getTime() - 1 : new Date(y, m - 1, d).getTime();
 }
 
-export function Dashboard({ sessions, p }: { sessions: Session[]; p: Palette }) {
-  const [selected, setSelected] = useState(() => new Set([sessions[0].id]));
+export function Dashboard({ sessions, p, onEdit }: { sessions: Session[]; p: Palette; onEdit: ApplyEdit }) {
+  const [picked, setSelected] = useState(() => new Set([sessions[0].id]));
   const [range, setRange] = useState<Range>({ preset: 'all', from: '', to: '' });
+  const [managing, setManaging] = useState(false);
+
+  // Edits can remove sessions (or empty them out of the list); fall back to the first one.
+  const selected = useMemo(() => {
+    const valid = new Set([...picked].filter((id) => sessions.some((s) => s.id === id)));
+    return valid.size ? valid : new Set([sessions[0].id]);
+  }, [picked, sessions]);
+
+  const edit: ApplyEdit = (fn) => {
+    const ids = onEdit(fn);
+    setSelected(new Set([...selected].map((id) => ids.get(id)).filter((id): id is string => id != null)));
+    return ids;
+  };
 
   const merged = useMemo(() => {
     const picked = sessions.filter((s) => selected.has(s.id));
@@ -53,7 +68,9 @@ export function Dashboard({ sessions, p }: { sessions: Session[]; p: Palette }) 
         range={range}
         onRange={setRange}
         latest={latest}
+        onManage={() => setManaging(true)}
       />
+      {managing && <SessionManager sessions={sessions} onEdit={edit} onSelect={setSelected} onClose={() => setManaging(false)} />}
       {stats.count === 0 ? (
         <div className="card empty">No solves in this date range.</div>
       ) : (

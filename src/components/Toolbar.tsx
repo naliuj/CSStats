@@ -25,13 +25,14 @@ export function presetRange(preset: Preset, latest: number): Range {
   return { preset, from: dayKey(from.getTime()), to: '' };
 }
 
-export function Toolbar({ sessions, selected, onSelect, range, onRange, latest }: {
+export function Toolbar({ sessions, selected, onSelect, range, onRange, latest, onManage }: {
   sessions: Session[];
   selected: Set<string>;
   onSelect: (s: Set<string>) => void;
   range: Range;
   onRange: (r: Range) => void;
   latest: number;
+  onManage: () => void;
 }) {
   const toggle = (id: string, additive: boolean) => {
     if (!additive) return onSelect(new Set([id]));
@@ -59,6 +60,9 @@ export function Toolbar({ sessions, selected, onSelect, range, onRange, latest }
             </button>
           ))}
         </div>
+        <button type="button" className="ghost manage" onClick={onManage}>
+          Edit sessions…
+        </button>
       </div>
       <div className="toolbar-row">
         <span className="toolbar-label" id="range-label">Range</span>
