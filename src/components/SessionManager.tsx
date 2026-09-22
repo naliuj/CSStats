@@ -56,12 +56,13 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
   // Drop checks for sessions that no longer exist after an edit.
   const live = useMemo(() => new Set([...checked].filter((id) => sessions.some((s) => s.id === id))), [checked, sessions]);
 
-  const toggle = (id: string) => {
-    const next = new Set(live);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setChecked(next);
-  };
+  const toggle = (id: string) =>
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   async function pickFile(file: File) {
     try {
@@ -249,8 +250,11 @@ function MergeForm({ picked, onBack, onMerge }: {
       }}
     >
       <fieldset>
-        <legend>Keep</legend>
-        <p className="field-help">The kept session keeps its place and settings. The others are removed after their solves move into it.</p>
+        <legend>Merge into</legend>
+        <p className="field-help">
+          All {picked.length} sessions below are combined into one. Pick the one to keep: it keeps its place and settings, and the
+          others are removed once their solves move into it.
+        </p>
         <div className="radio-list">
           {picked.map((s) => (
             <label key={s.id} className={s.id === targetId ? 'on' : ''}>
@@ -268,6 +272,7 @@ function MergeForm({ picked, onBack, onMerge }: {
               <span className="muted">
                 {eventName(s.scrType)} · {s.solves.length.toLocaleString()} solves · {span(s)}
               </span>
+              <span className={`role-tag${s.id === targetId ? ' keep' : ''}`}>{s.id === targetId ? 'Kept' : 'Merged in, then removed'}</span>
             </label>
           ))}
         </div>
