@@ -48,3 +48,11 @@ export function timeTick(v: number): string {
 export function swatch(color: string) {
   return `<span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${color};margin-right:6px"></span>`;
 }
+
+const STEPS = [500, 1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000];
+
+/** A time y-axis from lo..hi (ms) with round bounds and about six gridlines. */
+export function timeAxisBounds(lo: number, hi: number) {
+  const step = STEPS.find((s) => (hi - lo) / s <= 6) ?? STEPS[STEPS.length - 1];
+  return { min: Math.max(0, Math.floor(lo / step) * step), max: Math.ceil(hi / step) * step, interval: step };
+}

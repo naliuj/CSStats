@@ -13,6 +13,7 @@ Statistics and trends for your [csTimer](https://cstimer.net) solves. It's a sta
 - **Time of day and weekly volume**: when you practice, and how fast you are at each hour and week
 - **Solves**: recent solves with ao5/ao12 and scrambles
 - Filter by session (Ctrl/⌘-click to combine sessions) and by date range
+- **Compare**: put up to four sessions side by side, from this file or from other exports you load for comparison. Each side has its own sessions and date range. You get a stats table with differences from the first side, plus overlaid progress, distribution and personal-best charts. Comparison files are remembered and are never edited.
 - **Edit sessions**: merge sessions (interleaved by date, or appended in an order you choose), and import sessions from another csTimer export, either as new sessions or merged into existing ones. Duplicate solves are skipped when files share history. Edits can be undone or reverted, and **Download for csTimer** gives you a file to import back into csTimer.
 
 ## Getting your data

@@ -4,16 +4,8 @@ import { Card, Segmented } from './Card';
 import { axis, base, timeTick } from '../chartStyle';
 import { formatTime } from '../lib/format';
 import { quantile, type Stats } from '../lib/stats';
+import { binWidth, type Density } from '../lib/compare';
 import type { Palette } from '../theme';
-
-const NICE = [50, 100, 200, 250, 500, 1000, 2000, 5000, 10000, 15000, 30000, 60000];
-
-function autoBin(lo: number, hi: number) {
-  const target = (hi - lo) / 30;
-  return NICE.find((b) => b >= target) ?? NICE[NICE.length - 1];
-}
-
-type Density = 'fine' | 'auto' | 'coarse';
 
 export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
   const [density, setDensity] = useState<Density>('auto');
@@ -21,10 +13,7 @@ export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
   const option = useMemo(() => {
     const lo = quantile(stats.times, 0);
     const hi = quantile(stats.times, 0.99);
-    let w = autoBin(lo, hi);
-    const idx = NICE.indexOf(w);
-    if (density === 'fine') w = NICE[Math.max(0, idx - 1)];
-    if (density === 'coarse') w = NICE[Math.min(NICE.length - 1, idx + 1)];
+    const w = binWidth(lo, hi, density);
     const start = Math.floor(lo / w) * w;
     const nBins = Math.max(1, Math.floor((hi - start) / w) + 1);
     const counts = new Array(nBins).fill(0);

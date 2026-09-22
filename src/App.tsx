@@ -3,11 +3,17 @@ import { del, get, set } from 'idb-keyval';
 import { parseExport, ParseError } from './lib/parse';
 import type { CsDoc, EditResult } from './lib/edit';
 import type { Session } from './lib/types';
+import { compose, identity, invert, type IdMap } from './lib/remap';
 import { useTheme, type ThemePref } from './theme';
 import { UploadDropzone } from './components/UploadDropzone';
 import { Dashboard } from './components/Dashboard';
+import { CompareView, type CompareFile } from './components/compare/CompareView';
+import { Segmented } from './components/Card';
 
 const STORE_KEY = 'csstats-export';
+const COMPARE_KEY = 'csstats-compare';
+
+type View = 'dashboard' | 'compare';
 
 interface Stored {
   name: string;
@@ -22,8 +28,20 @@ interface Loaded {
   text: string;
   original: string;
   sessions: Session[];
-  /** Previous texts, most recent last. In-memory only. */
-  undo: string[];
+  /** Previous states, most recent last. In-memory only. */
+  undo: UndoEntry[];
+}
+
+interface UndoEntry {
+  text: string;
+  /** Session ids now → ids in `text`. */
+  back: IdMap;
+}
+
+/** Bumped on every edit, undo and revert, with how session ids moved (old → new). */
+export interface Remap {
+  n: number;
+  ids: IdMap;
 }
 
 /** Applies an edit to the export and reports how session ids moved. */
@@ -48,15 +66,49 @@ export default function App() {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const [view, setView] = useState<View>('dashboard');
+  const [compareFiles, setCompareFiles] = useState<(CompareFile & { text: string })[]>([]);
 
   useEffect(() => {
-    get<Stored>(STORE_KEY)
-      .then((v) => {
-        if (v) setLoaded({ name: v.name, text: v.text, original: v.original ?? v.text, sessions: parseExport(v.text), undo: [] });
-      })
-      .catch(() => {})
-      .finally(() => setRestoring(false));
+    Promise.all([
+      get<Stored>(STORE_KEY)
+        .then((v) => {
+          if (v) setLoaded({ name: v.name, text: v.text, original: v.original ?? v.text, sessions: parseExport(v.text), undo: [] });
+        })
+        .catch(() => {}),
+      get<{ id: string; name: string; text: string }[]>(COMPARE_KEY)
+        .then((list) => {
+          const files = [];
+          for (const f of list ?? []) {
+            try {
+              files.push({ ...f, sessions: parseExport(f.text) });
+            } catch {
+              // skip anything that no longer parses
+            }
+          }
+          setCompareFiles(files);
+        })
+        .catch(() => {}),
+    ]).finally(() => setRestoring(false));
   }, []);
+
+  function saveCompare(files: (CompareFile & { text: string })[]) {
+    setCompareFiles(files);
+    set(COMPARE_KEY, files.map(({ id, name, text }) => ({ id, name, text }))).catch(() => {});
+  }
+
+  async function addCompareFile(file: File) {
+    try {
+      const text = await file.text();
+      const sessions = parseExport(text);
+      const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      saveCompare([...compareFiles, { id, name: file.name, text, sessions }]);
+      setError(null);
+      setView('compare');
+    } catch (e) {
+      setError(e instanceof ParseError ? e.message : 'Could not read that file.');
+    }
+  }
 
   async function handleFile(file: File) {
     if (edited && !confirm('Load a new file? Your edits will be lost unless you download them first.')) return;
@@ -73,8 +125,11 @@ export default function App() {
 
   const edited = !!loaded && loaded.text !== loaded.original;
 
-  function commit(cur: Loaded, text: string, undo: string[]) {
+  const [remap, setRemap] = useState<Remap>({ n: 0, ids: new Map() });
+
+  function commit(cur: Loaded, text: string, undo: UndoEntry[], ids: IdMap) {
     setLoaded({ ...cur, text, sessions: parseExport(text), undo });
+    setRemap((r) => ({ n: r.n + 1, ids }));
     const stored: Stored = { name: cur.name, text, original: text === cur.original ? undefined : cur.original };
     set(STORE_KEY, stored).catch(() => {});
   }
@@ -82,25 +137,32 @@ export default function App() {
   const applyEdit: ApplyEdit = (edit) => {
     if (!loaded) return new Map();
     const { doc, ids } = edit(JSON.parse(loaded.text));
-    commit(loaded, JSON.stringify(doc), [...loaded.undo, loaded.text].slice(-50));
+    commit(loaded, JSON.stringify(doc), [...loaded.undo, { text: loaded.text, back: invert(ids) }].slice(-50), ids);
     return ids;
   };
 
   function undo() {
     if (!loaded?.undo.length) return;
-    commit(loaded, loaded.undo[loaded.undo.length - 1], loaded.undo.slice(0, -1));
+    const { text, back } = loaded.undo[loaded.undo.length - 1];
+    commit(loaded, text, loaded.undo.slice(0, -1), back);
   }
 
   function revert() {
     if (!loaded || !edited) return;
     if (!confirm('Discard all edits and go back to the file as you loaded it? You can undo this.')) return;
-    commit(loaded, loaded.original, [...loaded.undo, loaded.text]);
+    // Walk the undo history back to the original to find where each session ends up.
+    let toOriginal: IdMap = identity(loaded.sessions.map((s) => s.id));
+    for (let i = loaded.undo.length - 1; i >= 0; i--) toOriginal = compose(toOriginal, loaded.undo[i].back);
+    commit(loaded, loaded.original, [...loaded.undo, { text: loaded.text, back: invert(toOriginal) }], toOriginal);
   }
 
   function clear() {
     if (edited && !confirm('Clear data? Your edits will be lost unless you download them first.')) return;
     setLoaded(null);
+    setCompareFiles([]);
+    setView('dashboard');
     del(STORE_KEY).catch(() => {});
+    del(COMPARE_KEY).catch(() => {});
   }
 
   return (
@@ -167,7 +229,35 @@ export default function App() {
       )}
       <main>
         {restoring ? null : loaded ? (
-          <Dashboard key={loaded.name} sessions={loaded.sessions} p={palette} onEdit={applyEdit} />
+          <>
+            <div className="view-switch">
+              <Segmented
+                label="View"
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: 'dashboard', label: 'Dashboard' },
+                  { value: 'compare', label: 'Compare' },
+                ]}
+              />
+            </div>
+            {/* Both stay mounted so each keeps its selections when switching. */}
+            <div hidden={view !== 'dashboard'}>
+              <Dashboard key={loaded.name} sessions={loaded.sessions} p={palette} onEdit={applyEdit} remap={remap} />
+            </div>
+            <div hidden={view !== 'compare'}>
+              <CompareView
+                key={loaded.name}
+                mainName={loaded.name}
+                mainSessions={loaded.sessions}
+                remap={remap}
+                files={compareFiles}
+                onAddFile={addCompareFile}
+                onRemoveFile={(id) => saveCompare(compareFiles.filter((f) => f.id !== id))}
+                p={palette}
+              />
+            </div>
+          </>
         ) : (
           <UploadDropzone onFile={handleFile} error={error} />
         )}

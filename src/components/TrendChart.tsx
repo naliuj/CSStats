@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Chart } from './Chart';
 import { Card, Segmented } from './Card';
-import { axis, base, swatch, timeTick } from '../chartStyle';
+import { axis, base, swatch, timeAxisBounds, timeTick } from '../chartStyle';
 import { formatDate, formatSingle, formatTime } from '../lib/format';
 import { quantile, type AvgKey, type Stats } from '../lib/stats';
 import type { Palette } from '../theme';
@@ -20,8 +20,6 @@ function defaultOn(key: AvgKey, count: number) {
   if (key === 'ao12') return count <= 3000;
   return true;
 }
-
-const STEPS = [500, 1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000];
 
 export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
   const [mode, setMode] = useState<XMode>('index');
@@ -53,7 +51,6 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
 
     const lo = quantile(times, 0);
     const hi = quantile(times, 0.99);
-    const step = STEPS.find((s) => (hi - lo) / s <= 6) ?? STEPS[STEPS.length - 1];
     const selected = Object.fromEntries(LINES.map((l) => [l.key, defaultOn(l.key, count)]));
 
     return {
@@ -82,9 +79,7 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
       }),
       yAxis: axis(p, {
         type: 'value',
-        min: Math.max(0, Math.floor(lo / step) * step),
-        max: Math.ceil(hi / step) * step,
-        interval: step,
+        ...timeAxisBounds(lo, hi),
         axisLabel: { color: p.textMuted, formatter: timeTick },
       }),
       dataZoom: [

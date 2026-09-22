@@ -170,9 +170,9 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
           picked={view.ids.map((id) => sessions.find((s) => s.id === id)!).filter(Boolean)}
           onBack={() => setView({ kind: 'list' })}
           onMerge={(opts, label) => {
-            const ids = onEdit((doc) => mergeSessions(doc, opts));
-            const target = ids.get(opts.targetId);
-            if (target) onSelect(new Set([target]));
+            onEdit((doc) => mergeSessions(doc, opts));
+            // Pre-edit id: views translate selections through the edit's id map.
+            onSelect(new Set([opts.targetId]));
             setChecked(new Set());
             setNote({ text: label });
             setView({ kind: 'list' });
