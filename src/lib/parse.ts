@@ -1,4 +1,6 @@
 import type { Penalty, Session, Solve } from './types';
+import { ParseError } from './errors';
+import { isPTimerDoc, parsePTimer } from './ptimer';
 
 interface SessionMeta {
   name?: string | number;
@@ -6,7 +8,7 @@ interface SessionMeta {
   opt?: { scrType?: string };
 }
 
-export class ParseError extends Error {}
+export { ParseError };
 
 function toPenalty(p: unknown): Penalty {
   if (p === -1) return -1;
@@ -30,17 +32,30 @@ function parseSolve(entry: unknown): Solve | null {
   };
 }
 
-/** Parse the text of a csTimer "export to file" into non-empty sessions, ordered as in csTimer. */
-export function parseExport(text: string): Session[] {
-  let data: Record<string, unknown>;
+export type FileFormat = 'cstimer' | 'ptimer';
+
+export const formatOf = (doc: unknown): FileFormat => (isPTimerDoc(doc) ? 'ptimer' : 'cstimer');
+
+/** The file's format and its non-empty sessions, in the order the timer shows them. */
+export function parseFile(text: string): { format: FileFormat; sessions: Session[] } {
+  let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new ParseError('File is not valid JSON. Export it from csTimer via Export → "Export to file".');
+    throw new ParseError('File is not valid JSON. Use a csTimer export (Export → "Export to file") or a PTimer export or backup.');
   }
-  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+  if (isPTimerDoc(data)) return { format: 'ptimer', sessions: parsePTimer(data) };
+  return { format: 'cstimer', sessions: parseCstimer(data) };
+}
+
+/** Sessions from a csTimer export or a PTimer export/backup. */
+export const parseExport = (text: string): Session[] => parseFile(text).sessions;
+
+function parseCstimer(raw: unknown): Session[] {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new ParseError('Unrecognized file format.');
   }
+  const data = raw as Record<string, unknown>;
 
   let meta: Record<string, SessionMeta> = {};
   const props = data.properties as Record<string, unknown> | undefined;
@@ -74,7 +89,7 @@ export function parseExport(text: string): Session[] {
   }
 
   if (!sessions.length) {
-    throw new ParseError('No solves found. Is this a csTimer export file?');
+    throw new ParseError('No solves found. Is this a csTimer or PTimer export?');
   }
   sessions.sort((a, b) => a.rank - b.rank);
   return sessions;

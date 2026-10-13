@@ -33,7 +33,7 @@ export function RecentSolves({ stats }: { stats: Stats }) {
                 <tr key={i}>
                   <td className="muted">{(i + 1).toLocaleString()}</td>
                   <td className={i === stats.single.bestIndex ? 'best' : ''}>
-                    {s.penalty === -1 ? `DNF(${formatSingle(s.raw)})` : formatSingle(s.time) + (s.penalty ? '+' : '')}
+                    {s.penalty === -1 ? (s.raw > 0 ? `DNF(${formatSingle(s.raw)})` : 'DNF') : formatSingle(s.time) + (s.penalty ? '+' : '')}
                   </td>
                   <td>{formatTime(stats.rolling.ao5[i])}</td>
                   <td>{formatTime(stats.rolling.ao12[i])}</td>

@@ -15,9 +15,10 @@ import { CommonTimes, LastDigit } from './CommonTimes';
 import { SessionManager } from './SessionManager';
 import type { ApplyEdit, Remap } from '../App';
 import { mapIds } from '../lib/remap';
+import type { FileFormat } from '../lib/parse';
 import { filterByRange, selectSolves, validIds } from '../lib/select';
 
-export function Dashboard({ sessions, p, onEdit, remap }: { sessions: Session[]; p: Palette; onEdit: ApplyEdit; remap: Remap }) {
+export function Dashboard({ sessions, format, p, onEdit, remap }: { sessions: Session[]; format: FileFormat; p: Palette; onEdit: ApplyEdit; remap: Remap }) {
   const [picked, setSelected] = useState(() => new Set([sessions[0].id]));
 
   // Edits renumber sessions. Selection changes made in the same event use pre-edit ids, so
@@ -57,7 +58,7 @@ export function Dashboard({ sessions, p, onEdit, remap }: { sessions: Session[];
         latest={latest}
         onManage={() => setManaging(true)}
       />
-      {managing && <SessionManager sessions={sessions} onEdit={onEdit} onSelect={setSelected} onClose={() => setManaging(false)} />}
+      {managing && <SessionManager sessions={sessions} format={format} onEdit={onEdit} onSelect={setSelected} onClose={() => setManaging(false)} />}
       {stats.count === 0 ? (
         <div className="card empty">No solves in this date range.</div>
       ) : (

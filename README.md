@@ -1,6 +1,6 @@
 # CSStats
 
-Statistics and trends for your [csTimer](https://cstimer.net) solves. It's a static site: your export is parsed and analyzed entirely in the browser and never uploaded anywhere. The last file you load is kept in IndexedDB, so reloading the page doesn't mean re-uploading.
+Statistics and trends for your [csTimer](https://cstimer.net) and PTimer solves. It's a static site: your export is parsed and analyzed entirely in the browser and never uploaded anywhere. The last file you load is kept in IndexedDB, so reloading the page doesn't mean re-uploading.
 
 ## Features
 
@@ -18,7 +18,10 @@ Statistics and trends for your [csTimer](https://cstimer.net) solves. It's a sta
 
 ## Getting your data
 
-In csTimer, click **Export** → **Export to file**, then drop the `.txt` file onto the page.
+- **csTimer**: click **Export** → **Export to file**, then drop the `.txt` file onto the page.
+- **PTimer**: export your sessions (a `.ptimer.json` file) or use a backup, and drop it onto the page.
+
+Edits are saved back in the format you loaded: csTimer files download as csTimer exports, PTimer files as PTimer files (PTimer orders solves by date, so merges into a PTimer file are always by date). Sessions can be imported between the two formats in either direction; events are mapped the same way PTimer maps them.
 
 ## Development
 

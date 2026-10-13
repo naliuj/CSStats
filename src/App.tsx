@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { del, get, set } from 'idb-keyval';
-import { parseExport, ParseError } from './lib/parse';
+import { parseExport, parseFile, ParseError, type FileFormat } from './lib/parse';
 import type { CsDoc, EditResult } from './lib/edit';
 import type { Session } from './lib/types';
 import { compose, identity, invert, type IdMap } from './lib/remap';
@@ -17,7 +17,7 @@ type View = 'dashboard' | 'compare';
 
 interface Stored {
   name: string;
-  /** Current export text, with any edits applied. Always a valid csTimer export. */
+  /** Current file text, with any edits applied. Always a valid file in its own format (csTimer or PTimer). */
   text: string;
   /** The file as loaded, for reverting. Absent when nothing has been edited. */
   original?: string;
@@ -25,6 +25,7 @@ interface Stored {
 
 interface Loaded {
   name: string;
+  format: FileFormat;
   text: string;
   original: string;
   sessions: Session[];
@@ -56,7 +57,20 @@ function download(name: string, text: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-const editedName = (name: string) => name.replace(/(-edited)?(\.[^.]+)?$/, (_m, _e, ext) => `-edited${ext || '.txt'}`);
+// "times.txt" → "times-edited.txt"; PTimer's double extension stays together ("x.ptimer.json" → "x-edited.ptimer.json").
+const editedName = (name: string, format: FileFormat) =>
+  name.replace(/(-edited)?((\.ptimer)?\.[^.]+)?$/, (_m, _e, ext) => `-edited${ext || (format === 'ptimer' ? '.ptimer.json' : '.txt')}`);
+
+function downloadHint(format: FileFormat, text: string): { label: string; title: string } {
+  if (format === 'cstimer') return { label: 'Download for csTimer', title: 'Download the edited file. Import it in csTimer via Export → Import from file.' };
+  const backup = (JSON.parse(text) as { kind?: string }).kind !== 'export';
+  return {
+    label: 'Download for PTimer',
+    title: backup
+      ? 'Download the edited backup. Restoring it in PTimer replaces your data with it.'
+      : 'Download the edited export. In PTimer, use Import times and choose to replace your sessions, or the old sessions stay alongside.',
+  };
+}
 
 const THEME_NEXT: Record<ThemePref, ThemePref> = { system: 'light', light: 'dark', dark: 'system' };
 const THEME_LABEL: Record<ThemePref, string> = { system: 'Theme: auto', light: 'Theme: light', dark: 'Theme: dark' };
@@ -73,7 +87,7 @@ export default function App() {
     Promise.all([
       get<Stored>(STORE_KEY)
         .then((v) => {
-          if (v) setLoaded({ name: v.name, text: v.text, original: v.original ?? v.text, sessions: parseExport(v.text), undo: [] });
+          if (v) setLoaded({ name: v.name, text: v.text, original: v.original ?? v.text, ...parseFile(v.text), undo: [] });
         })
         .catch(() => {}),
       get<{ id: string; name: string; text: string }[]>(COMPARE_KEY)
@@ -114,8 +128,7 @@ export default function App() {
     if (edited && !confirm('Load a new file? Your edits will be lost unless you download them first.')) return;
     try {
       const text = await file.text();
-      const sessions = parseExport(text);
-      setLoaded({ name: file.name, text, original: text, sessions, undo: [] });
+      setLoaded({ name: file.name, text, original: text, ...parseFile(text), undo: [] });
       setError(null);
       set(STORE_KEY, { name: file.name, text } satisfies Stored).catch(() => {});
     } catch (e) {
@@ -188,10 +201,10 @@ export default function App() {
                   <button
                     type="button"
                     className="ghost accent"
-                    onClick={() => download(editedName(loaded.name), loaded.text)}
-                    title="Download the edited file. Import it in csTimer via Export → Import from file."
+                    onClick={() => download(editedName(loaded.name, loaded.format), loaded.text)}
+                    title={downloadHint(loaded.format, loaded.text).title}
                   >
-                    Download for csTimer
+                    {downloadHint(loaded.format, loaded.text).label}
                   </button>
                 </>
               )}
@@ -243,7 +256,7 @@ export default function App() {
             </div>
             {/* Both stay mounted so each keeps its selections when switching. */}
             <div hidden={view !== 'dashboard'}>
-              <Dashboard key={loaded.name} sessions={loaded.sessions} p={palette} onEdit={applyEdit} remap={remap} />
+              <Dashboard key={loaded.name} sessions={loaded.sessions} format={loaded.format} p={palette} onEdit={applyEdit} remap={remap} />
             </div>
             <div hidden={view !== 'compare'}>
               <CompareView
@@ -263,7 +276,7 @@ export default function App() {
         )}
       </main>
       <footer className="footer">
-        Works with exports from <a href="https://cstimer.net" target="_blank" rel="noreferrer">csTimer</a>. Your data stays in this browser.
+        Works with exports from <a href="https://cstimer.net" target="_blank" rel="noreferrer">csTimer</a> and PTimer. Your data stays in this browser.
       </footer>
     </div>
   );

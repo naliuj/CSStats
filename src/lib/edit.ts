@@ -6,6 +6,11 @@
  * Operations that remove sessions renumber the rest and report the mapping in `ids`.
  */
 
+import { cstimerType, isPTimerEvent } from './events';
+import { dupeKey, normPenalty, type PortableSession, type PortableSolve } from './portable';
+import { importPTimer, isPTimerDoc, mergePTimer, ptimerPortable, type PtDoc, type PtRecon } from './ptimer';
+
+/** A parsed export of either format: a csTimer export object or a PTimer file. */
 export type CsDoc = Record<string, unknown>;
 type RawSolve = unknown[];
 
@@ -141,7 +146,22 @@ function removeAndCompact(doc: CsDoc, remove: Set<string>): EditResult {
   return { doc, ids };
 }
 
-const solveKey = (s: RawSolve) => JSON.stringify([s[0], s[1], s[3]]);
+/** A csTimer entry ([[penalty, ms], scramble, comment, seconds, …]) as a portable solve. */
+function toPortable(s: RawSolve): PortableSolve {
+  const [pen, raw] = (Array.isArray(s[0]) ? s[0] : []) as unknown[];
+  return {
+    raw: typeof raw === 'number' ? raw : 0,
+    penalty: normPenalty(pen),
+    scramble: typeof s[1] === 'string' ? s[1] : '',
+    comment: typeof s[2] === 'string' ? s[2] : '',
+    date: ts(s) * 1000,
+    cs: s,
+  };
+}
+
+const fromPortable = (s: PortableSolve): RawSolve => (s.cs ? structuredClone(s.cs) : [[s.penalty, s.raw], s.scramble, s.comment, Math.round(s.date / 1000)]);
+
+const solveKey = (s: RawSolve) => dupeKey(toPortable(s));
 
 /** Put `extra` into session `targetId`, returning how many solves were added and skipped as duplicates. */
 function mergeInto(doc: CsDoc, targetId: string, extra: RawSolve[], mode: MergeMode, dedupe: boolean) {
@@ -170,21 +190,24 @@ function finishSession(doc: CsDoc, id: string, name?: string) {
   writeMeta(doc, meta);
 }
 
-/** Count what a merge would add, without doing it. */
+/** Count the duplicates a merge would skip, without doing it. */
 export function previewMerge(base: { raw: number; penalty: number; scramble: string; date: number }[], extra: typeof base) {
-  const key = (s: (typeof base)[number]) => `${s.date}|${s.raw}|${s.penalty}|${s.scramble}`;
-  const seen = new Set(base.map(key));
+  const seen = new Set(base.map(dupeKey));
   let dupes = 0;
   for (const s of extra) {
-    const k = key(s);
+    const k = dupeKey(s);
     if (seen.has(k)) dupes++;
     else seen.add(k);
   }
   return dupes;
 }
 
-/** Merge several sessions into one. */
-export function mergeSessions(input: CsDoc, { targetId, sourceIds, mode, name, dedupe = false }: MergeOptions): EditResult {
+/** Merge several sessions into one. PTimer files always merge by date. */
+export function mergeSessions(input: CsDoc, opts: MergeOptions): EditResult {
+  return isPTimerDoc(input) ? mergePTimer(input, opts) : mergeCstimer(input, opts);
+}
+
+function mergeCstimer(input: CsDoc, { targetId, sourceIds, mode, name, dedupe = false }: MergeOptions): EditResult {
   const doc = clone(input);
   const sources = sourceIds.filter((id) => id !== targetId);
   if (!sources.length) throw new Error('Pick at least one other session to merge.');
@@ -194,27 +217,57 @@ export function mergeSessions(input: CsDoc, { targetId, sourceIds, mode, name, d
   return removeAndCompact(doc, new Set(sources));
 }
 
-/** Bring sessions from another export into this one, as new sessions or merged into existing ones. */
-export function importSessions(input: CsDoc, other: CsDoc, plan: ImportPlan[], { dedupe = true } = {}): ImportResult {
+/** A csTimer session as a format-neutral bundle. */
+function cstimerPortable(doc: CsDoc, id: string): PortableSession | null {
+  if (!(`session${id}` in doc)) return null;
+  const m = readMeta(doc)[id] ?? {};
+  const opt = structuredClone(m.opt ?? {});
+  return {
+    name: m.name != null && String(m.name) !== '' ? String(m.name) : `Session ${id}`,
+    type: typeof opt.scrType === 'string' ? opt.scrType : '333',
+    csOpt: opt,
+    solves: readSolves(doc, id).map(toPortable),
+  };
+}
+
+/**
+ * Bring sessions from another export (csTimer or PTimer) into this one, as new sessions or merged
+ * into existing ones.
+ */
+export function importSessions(input: CsDoc, other: CsDoc, plan: ImportPlan[], opts: { dedupe?: boolean } = {}): ImportResult {
+  const sources = new Map<string, PortableSession>();
+  for (const { sourceId } of plan) {
+    const p = isPTimerDoc(other) ? ptimerPortable(other, sourceId) : cstimerPortable(other, sourceId);
+    if (p) sources.set(sourceId, p);
+  }
+  if (isPTimerDoc(input)) {
+    const recons: PtRecon[] = isPTimerDoc(other) ? (other as PtDoc).reconstructions ?? [] : [];
+    return importPTimer(input, sources, recons, plan, opts);
+  }
+  return importCstimer(input, sources, plan, opts);
+}
+
+function importCstimer(input: CsDoc, sources: Map<string, PortableSession>, plan: ImportPlan[], { dedupe = true } = {}): ImportResult {
   const doc = clone(input);
-  const otherMeta = readMeta(other);
   let nextId = Math.max(0, ...sessionIds(doc).map(Number)) + 1;
   let nextRank = Math.max(0, ...Object.values(readMeta(doc)).map((m) => m.rank ?? 0)) + 1;
   let added = 0;
   let skipped = 0;
 
   for (const { sourceId, into, mode } of plan) {
-    const solves = structuredClone(readSolves(other, sourceId));
+    const src = sources.get(sourceId);
+    if (!src) continue;
     let target = into;
     if (into === 'new') {
       target = String(nextId++);
-      const src = otherMeta[sourceId] ?? {};
+      // csTimer sessions keep their options; PTimer events become the matching scramble type.
+      const opt = src.csOpt ?? (isPTimerEvent(src.type) && src.type !== '333' ? { scrType: cstimerType(src.type) } : {});
       const meta = readMeta(doc);
-      meta[target] = { name: src.name ?? `Session ${sourceId}`, opt: structuredClone(src.opt ?? {}), rank: nextRank++ };
+      meta[target] = { name: src.name, opt, rank: nextRank++ };
       writeMeta(doc, meta);
       doc[`session${target}`] = [];
     }
-    const r = mergeInto(doc, target, solves, mode, dedupe && into !== 'new');
+    const r = mergeInto(doc, target, src.solves.map(fromPortable), mode, dedupe && into !== 'new');
     added += r.added;
     skipped += r.skipped;
     finishSession(doc, target);

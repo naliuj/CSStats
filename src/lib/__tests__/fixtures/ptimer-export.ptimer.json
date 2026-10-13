@@ -1,0 +1,34 @@
+{
+  "app": "PTimer",
+  "format": 1,
+  "kind": "export",
+  "version": "0.3.0",
+  "createdAt": 1791900000000,
+  "sessions": [
+    { "id": 1, "name": "3x3", "event": "333", "rank": 1, "createdAt": 1791000000000, "targets": { "ao5": 11000, "ao12": 11500 } },
+    { "id": 4, "name": "2-4 relay", "event": "r234", "rank": 2, "createdAt": 1791100000000 },
+    { "id": 7, "name": "FMC", "event": "333fm", "rank": 3, "createdAt": 1791200000000 }
+  ],
+  "solves": [
+    { "id": 101, "sessionId": 1, "raw": 11234, "penalty": 0, "scramble": "R2 D' F2 U2 L2 B2 D' R2 U B2 U' F' L' R B' L D2 R' F' R2", "comment": "", "date": 1791810000123 },
+    { "id": 102, "sessionId": 1, "raw": 10876, "penalty": 2000, "scramble": "B2 U2 L2 F2 D B2 U' R2 D' L2 U' B' L' U2 F' R D' B' U' R'", "comment": "inspection ran over", "date": 1791810045880 },
+    { "id": 103, "sessionId": 1, "raw": 12950, "penalty": -1, "scramble": "D2 F2 R2 U' L2 D' B2 D2 U' F2 R2 B L U' B' D F' L2 B2 R U2", "comment": "pop #lockup", "date": 1791810092410 },
+    { "id": 104, "sessionId": 1, "raw": 0, "penalty": -1, "scramble": "U2 L2 B2 U R2 D L2 U' F2 L2 D2 R' B' U L' D2 F' U2 R' B2 L'", "comment": "", "date": 1791810150002 },
+    { "id": 105, "sessionId": 1, "raw": 9872, "penalty": 0, "scramble": "F2 D2 L2 B2 U R2 U2 B2 D' L2 U2 R D' F2 R2 B D' U B2 R' D'", "comment": "#pll #nice", "date": 1791810201777 },
+    { "id": 201, "sessionId": 4, "raw": 64512, "penalty": 0, "scramble": "2x2) R U' F2 R' U2 F' U R' U'\n3x3) L2 U2 B2 R2 D' B2 D L2 F2 U' R' B L2 U' F' D2 R' B U2\n4x4) R2 B2 F2 U' L2 F2 D' R2 U2 R2 U2 L' D' L' U' R2 F' L R U' Fw2 Rw2 U Fw2 L' F2 R' Uw2 B2 R Uw2 R' Uw F U' Rw2 D' B' Fw' R2 Fw' R Uw'", "comment": "", "date": 1791820000000 },
+    { "id": 301, "sessionId": 7, "raw": 31000, "penalty": 0, "scramble": "R' U' F L2 D2 R2 U' B2 L2 U R2 D' R2 F2 L' B D2 U2 L2 B U R' U' F", "comment": "", "date": 1791830000000, "solution": "// EO\nF' B\n// block\nR2 U' D L2\n// finish (inverse)\n(D' R2 F2 U R' U2)" },
+    { "id": 302, "sessionId": 7, "raw": 0, "penalty": -1, "scramble": "R' U' F D2 L2 U' B2 R2 F2 D' L2 U L B' U2 F R U' L2 R' D2 R' U' F", "comment": "ran out of time", "date": 1791833600000 }
+  ],
+  "reconstructions": [
+    { "id": 1, "solveId": 105, "puzzle": 3, "title": "Solve 105", "scramble": "F2 D2 L2 B2 U R2 U2 B2 D' L2 U2 R D' F2 R2 B D' U B2 R' D'", "solution": "x2 // inspection\nD' R' F R D // cross\nU R U' R' // 1st pair\ny' R' U2 R U' R' U R // 2nd pair\nU' L' U L // 3rd pair\nR U R' U' R U R' // 4th pair\nF R U R' U' F' // OLL\nR U R' U' R' F R2 U' R' U' R U R' F' // PLL", "raw": 9872, "penalty": 0, "date": 1791810300000, "updatedAt": 1791810500000 },
+    { "id": 2, "solveId": null, "puzzle": 4, "title": "Feliks 4x4 WR", "scramble": "Rw2 U2 R' Uw2 F2 R2 Uw' F'", "solution": "z2 // inspection\nRw U Rw' // centres", "raw": null, "penalty": 0, "date": 1791700000000, "updatedAt": 1791700000000 }
+  ],
+  "trainingSolves": [
+    { "id": 1, "drill": "pll", "caseId": "T", "raw": 1520, "penalty": 0, "scramble": "R U R' U' R' F R2 U' R' U' R U R' F'", "date": 1791840000000 },
+    { "id": 2, "drill": "cross", "caseId": null, "raw": 3210, "penalty": 0, "scramble": "L2 D' R2 B2 U F2 D2 R' B U' L", "date": 1791840060000 }
+  ],
+  "algs": [
+    { "id": 1, "drill": "pll", "caseId": "T", "alg": "R U R' U' R' F R2 U' R' U' R U R' F'", "status": "learned", "updatedAt": 1791840100000 },
+    { "id": 2, "drill": "oll", "caseId": "27", "alg": "", "status": "learning", "updatedAt": 1791840200000 }
+  ]
+}

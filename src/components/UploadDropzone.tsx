@@ -19,9 +19,10 @@ export function UploadDropzone({ onFile, error }: { onFile: (f: File) => void; e
         if (f) onFile(f);
       }}
     >
-      <h2>Drop your csTimer export here</h2>
+      <h2>Drop your timer export here</h2>
       <p>
-        In csTimer, open <b>Export</b> (the arrow icon) and choose <b>Export to file</b>. Then drop the <code>.txt</code> file here.
+        In csTimer, open <b>Export</b> (the arrow icon) and choose <b>Export to file</b>, then drop the <code>.txt</code> file here. PTimer
+        exports and backups (<code>.json</code>) work too.
       </p>
       <button type="button" className="primary" onClick={() => input.current?.click()}>
         Choose file

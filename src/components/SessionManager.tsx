@@ -3,15 +3,10 @@ import type { Session, Solve } from '../lib/types';
 import { importSessions, mergeSessions, previewMerge, type CsDoc, type ImportPlan, type MergeMode } from '../lib/edit';
 import { parseExport, ParseError } from '../lib/parse';
 import { formatDate } from '../lib/format';
+import { eventName, puzzleOf } from '../lib/events';
+import type { FileFormat } from '../lib/parse';
 import type { ApplyEdit } from '../App';
 import { Segmented } from './Card';
-
-const EVENTS: Record<string, string> = {
-  '333': '3x3', '222so': '2x2', '444wca': '4x4', '555wca': '5x5', '666wca': '6x6', '777wca': '7x7',
-  '333oh': 'OH', '333ni': '3BLD', '333fm': 'FMC', pyrso: 'Pyraminx', skbso: 'Skewb', sqrs: 'Square-1',
-  clkwca: 'Clock', mgmp: 'Megaminx', '444bld': '4BLD', '555bld': '5BLD', input: 'Typed', nocache_333: '3x3',
-};
-const eventName = (t: string) => EVENTS[t] ?? t;
 
 const MODES: { value: MergeMode; label: string }[] = [
   { value: 'date', label: 'By date' },
@@ -35,8 +30,12 @@ function span(s: Session) {
 
 type View = { kind: 'list' } | { kind: 'merge'; ids: string[] } | { kind: 'import'; name: string; doc: CsDoc; sessions: Session[] };
 
-export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
+// PTimer always shows a session's solves in date order, so merges into a PTimer file are by date.
+const DATE_ONLY_HELP = 'PTimer keeps every session in date order, so solves are merged by when they were done.';
+
+export function SessionManager({ sessions, format, onEdit, onSelect, onClose }: {
   sessions: Session[];
+  format: FileFormat;
   onEdit: ApplyEdit;
   onSelect: (ids: Set<string>) => void;
   onClose: () => void;
@@ -95,8 +94,9 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
       {view.kind === 'list' && (
         <>
           <p className="muted modal-intro">
-            Select sessions to act on them in bulk. Edits are kept in this browser; use <b>Download for csTimer</b> in the top
-            bar to take them back to csTimer.
+            Select sessions to act on them in bulk. Edits are kept in this browser; use{' '}
+            <b>Download for {format === 'ptimer' ? 'PTimer' : 'csTimer'}</b> in the top bar to take them back to{' '}
+            {format === 'ptimer' ? 'PTimer' : 'csTimer'}.
           </p>
           <div className="scroll-x">
             <table className="sm-table">
@@ -167,6 +167,7 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
 
       {view.kind === 'merge' && (
         <MergeForm
+          dateOnly={format === 'ptimer'}
           picked={view.ids.map((id) => sessions.find((s) => s.id === id)!).filter(Boolean)}
           onBack={() => setView({ kind: 'list' })}
           onMerge={(opts, label) => {
@@ -182,6 +183,7 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
 
       {view.kind === 'import' && (
         <ImportForm
+          dateOnly={format === 'ptimer'}
           name={view.name}
           theirs={view.sessions}
           ours={sessions}
@@ -207,14 +209,16 @@ export function SessionManager({ sessions, onEdit, onSelect, onClose }: {
   );
 }
 
-function MergeForm({ picked, onBack, onMerge }: {
+function MergeForm({ dateOnly, picked, onBack, onMerge }: {
+  dateOnly: boolean;
   picked: Session[];
   onBack: () => void;
   onMerge: (opts: Parameters<typeof mergeSessions>[1], label: string) => void;
 }) {
   const [targetId, setTargetId] = useState(picked[0].id);
   const [order, setOrder] = useState(() => picked.map((s) => s.id));
-  const [mode, setMode] = useState<MergeMode>('date');
+  const [chosenMode, setMode] = useState<MergeMode>('date');
+  const mode = dateOnly ? 'date' : chosenMode;
   const [dedupe, setDedupe] = useState(true);
   const target = picked.find((s) => s.id === targetId)!;
   const [name, setName] = useState(target.name);
@@ -224,7 +228,8 @@ function MergeForm({ picked, onBack, onMerge }: {
   const extra = sources.flatMap((s) => s.solves);
   const dupes = dedupe ? previewMerge(target.solves, extra) : 0;
   const total = target.solves.length + extra.length - dupes;
-  const events = new Set(picked.map((s) => s.scrType));
+  // One name per puzzle, so a csTimer '222so' and a PTimer '222' session count as the same.
+  const events = new Map(picked.map((s) => [puzzleOf(s.scrType), eventName(s.scrType)]));
   // Appending keeps each session's order, so it's only chronological if every session ends before the next begins.
   const chain = [target, ...sources];
   const outOfOrder = mode === 'append' && chain.some((s, i) => i > 0 && chain.slice(0, i).some((p) => lastDate(p) > firstDate(s)));
@@ -292,8 +297,8 @@ function MergeForm({ picked, onBack, onMerge }: {
 
       <fieldset>
         <legend>Order solves</legend>
-        <Segmented value={mode} options={MODES} onChange={setMode} label="Order solves" />
-        <p className="field-help">{MODE_HELP[mode]}</p>
+        {!dateOnly && <Segmented value={mode} options={MODES} onChange={setMode} label="Order solves" />}
+        <p className="field-help">{dateOnly ? DATE_ONLY_HELP : MODE_HELP[mode]}</p>
         {mode === 'append' && (
           <ol className="order-list">
             <li>
@@ -326,7 +331,7 @@ function MergeForm({ picked, onBack, onMerge }: {
           <b>{total.toLocaleString()}</b> solves in “{name.trim() || target.name}”
           {dupes > 0 && <span className="muted"> · {dupes.toLocaleString()} duplicates skipped</span>}
         </div>
-        {events.size > 1 && <p className="warn">These sessions use different puzzles or scramble types ({[...events].map(eventName).join(', ')}).</p>}
+        {events.size > 1 && <p className="warn">These sessions use different puzzles or scramble types ({[...events.values()].join(', ')}).</p>}
         {outOfOrder && <p className="warn">Appending will put solves out of date order, so date-based charts may jump backwards.</p>}
       </div>
 
@@ -343,18 +348,25 @@ function MergeForm({ picked, onBack, onMerge }: {
   );
 }
 
-function ImportForm({ name, theirs, ours, onBack, onImport }: {
+function ImportForm({ dateOnly, name, theirs, ours, onBack, onImport }: {
+  dateOnly: boolean;
   name: string;
   theirs: Session[];
   ours: Session[];
   onBack: () => void;
   onImport: (plan: ImportPlan[], dedupe: boolean) => void;
 }) {
-  // Default: merge into a session with the same name, otherwise add as a new session.
+  // Default: merge into a session with the same name (and puzzle, if one matches), otherwise add it as new.
   const [dest, setDest] = useState<Record<string, string>>(() =>
-    Object.fromEntries(theirs.map((t) => [t.id, ours.find((o) => o.name === t.name)?.id ?? 'new'])),
+    Object.fromEntries(
+      theirs.map((t) => {
+        const named = ours.filter((o) => o.name === t.name);
+        return [t.id, (named.find((o) => puzzleOf(o.scrType) === puzzleOf(t.scrType)) ?? named[0])?.id ?? 'new'];
+      }),
+    ),
   );
-  const [mode, setMode] = useState<MergeMode>('date');
+  const [chosenMode, setMode] = useState<MergeMode>('date');
+  const mode = dateOnly ? 'date' : chosenMode;
   const [dedupe, setDedupe] = useState(true);
 
   const plan: ImportPlan[] = theirs.filter((t) => dest[t.id] !== 'skip').map((t) => ({ sourceId: t.id, into: dest[t.id], mode }));
@@ -430,9 +442,11 @@ function ImportForm({ name, theirs, ours, onBack, onImport }: {
       {merging && (
         <fieldset>
           <legend>When merging, order solves</legend>
-          <Segmented value={mode} options={MODES} onChange={setMode} label="Order solves" />
+          {!dateOnly && <Segmented value={mode} options={MODES} onChange={setMode} label="Order solves" />}
           <p className="field-help">
-            {mode === 'date'
+            {dateOnly
+              ? DATE_ONLY_HELP
+              : mode === 'date'
               ? 'Imported solves are placed among the existing ones by when they were done.'
               : 'Imported solves go after the existing ones. Dates are left as they are.'}
           </p>
