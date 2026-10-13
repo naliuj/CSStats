@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Card } from './Card';
-import { formatSingle, formatTime } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import type { Stats } from '../lib/stats';
 
 const PAGE = 25;
@@ -8,6 +8,7 @@ const dt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 
 
 export function RecentSolves({ stats }: { stats: Stats }) {
   const [shown, setShown] = useState(PAGE);
+  const u = useUnits();
   const n = stats.count;
   const rows = [];
   for (let i = n - 1; i >= Math.max(0, n - shown); i--) rows.push(i);
@@ -33,10 +34,10 @@ export function RecentSolves({ stats }: { stats: Stats }) {
                 <tr key={i}>
                   <td className="muted">{(i + 1).toLocaleString()}</td>
                   <td className={i === stats.single.bestIndex ? 'best' : ''}>
-                    {s.penalty === -1 ? (s.raw > 0 ? `DNF(${formatSingle(s.raw)})` : 'DNF') : formatSingle(s.time) + (s.penalty ? '+' : '')}
+                    {u.solve(s)}
                   </td>
-                  <td>{formatTime(stats.rolling.ao5[i])}</td>
-                  <td>{formatTime(stats.rolling.ao12[i])}</td>
+                  <td>{u.avg(stats.rolling.ao5[i])}</td>
+                  <td>{u.avg(stats.rolling.ao12[i])}</td>
                   <td className="muted nowrap">{dt.format(s.date)}</td>
                   <td className="scramble" title={s.comment || undefined}>{s.scramble}</td>
                 </tr>

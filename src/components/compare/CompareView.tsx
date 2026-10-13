@@ -6,6 +6,8 @@ import type { Palette } from '../../theme';
 import { ALL_TIME, type Range } from '../Toolbar';
 import type { Remap } from '../../App';
 import { mapIds } from '../../lib/remap';
+import { unitOf, unitsFor, type Units } from '../../lib/units';
+import { UnitsProvider } from '../UnitsContext';
 import { SidePicker } from './SidePicker';
 import { CompareTable } from './CompareTable';
 import { CompareProgress } from './CompareProgress';
@@ -38,6 +40,8 @@ export interface Side {
   fileName: string;
   sessionNames: string;
   stats: Stats;
+  /** Times, or moves for a Fewest Moves side. */
+  units: Units;
 }
 
 let nextKey = 1;
@@ -110,7 +114,8 @@ export function CompareView({ mainName, mainSessions, remap, files, onAddFile, o
         const sessions = src?.sessions ?? mainSessions;
         const ids = validIds(sessions, s.sessionIds);
         const stats = computeStats(filterByRange(selectSolves(sessions, ids), s.range));
-        const sessionNames = sessions.filter((x) => ids.has(x.id)).map((x) => x.name).join(' + ');
+        const picked = sessions.filter((x) => ids.has(x.id));
+        const sessionNames = picked.map((x) => x.name).join(' + ');
         return {
           letter: LETTERS[i],
           color: p.series[i],
@@ -118,6 +123,7 @@ export function CompareView({ mainName, mainSessions, remap, files, onAddFile, o
           fileName: src?.name ?? mainName,
           sessionNames,
           stats,
+          units: unitsFor(unitOf(picked)),
         };
       }),
     // sourceOf/sessionsOf are derived from files and mainSessions.
@@ -136,6 +142,9 @@ export function CompareView({ mainName, mainSessions, remap, files, onAddFile, o
   };
 
   const shown = resolved.filter((s) => s.stats.count > 0);
+  // Charts share one axis: moves only if every side is Fewest Moves.
+  const chartUnits = shown.length && shown.every((s) => s.units.unit === 'moves') ? shown[0].units : unitsFor('time');
+  const mixed = new Set(shown.map((s) => s.units.unit)).size > 1;
 
   return (
     <div className="compare">
@@ -194,12 +203,15 @@ export function CompareView({ mainName, mainSessions, remap, files, onAddFile, o
       {sides.length < 2 && <p className="muted compare-hint">Add a side, or load another file, to compare.</p>}
 
       <CompareTable sides={resolved} />
+      {mixed && <p className="muted compare-hint">Fewest Moves results are move counts, so charting them alongside times isn't meaningful.</p>}
       {shown.length > 0 && (
-        <div className="grid">
-          <CompareProgress sides={shown} p={p} />
-          <CompareDistribution sides={shown} p={p} />
-          <ComparePBs sides={shown} p={p} />
-        </div>
+        <UnitsProvider value={chartUnits}>
+          <div className="grid">
+            <CompareProgress sides={shown} p={p} />
+            <CompareDistribution sides={shown} p={p} />
+            <ComparePBs sides={shown} p={p} />
+          </div>
+        </UnitsProvider>
       )}
     </div>
   );

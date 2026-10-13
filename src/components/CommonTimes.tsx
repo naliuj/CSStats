@@ -4,24 +4,30 @@ import { Card, Segmented } from './Card';
 import { axis, base } from '../chartStyle';
 import { exactTimeStats, lastDigitCounts, type Precision } from '../lib/exactTimes';
 import { formatDate, formatTime } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import type { Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
 const PAGE = 10;
 
 export function CommonTimes({ stats }: { stats: Stats }) {
-  const [precision, setPrecision] = useState<Precision>(10);
+  const u = useUnits();
+  const [chosen, setPrecision] = useState<Precision>(10);
+  // Fewest Moves counts whole moves; there's no finer precision to pick.
+  const precision: Precision = u.unit === 'moves' ? 1000 : chosen;
   const [shown, setShown] = useState(PAGE);
   const s = useMemo(() => exactTimeStats(stats.times, precision), [stats, precision]);
   const rows = s.ranked.slice(0, shown);
   const max = rows[0]?.count ?? 1;
   const decimals = precision === 10 ? 2 : 1;
+  const what = u.unit === 'moves' ? 'results' : 'times';
 
   return (
     <Card
-      title="Most common times"
-      sub={`${s.distinct.toLocaleString()} different times across ${s.total.toLocaleString()} solves. ${s.singletons.toLocaleString()} came up only once.`}
+      title={`Most common ${what}`}
+      sub={`${s.distinct.toLocaleString()} different ${what} across ${s.total.toLocaleString()} solves. ${s.singletons.toLocaleString()} came up only once.`}
       controls={
+        u.unit === 'time' && (
         <Segmented
           label="Precision"
           value={String(precision) as '10' | '100'}
@@ -34,6 +40,7 @@ export function CommonTimes({ stats }: { stats: Stats }) {
             { value: '100', label: '0.1s' },
           ]}
         />
+        )
       }
     >
       <div className="scroll-x">
@@ -41,7 +48,7 @@ export function CommonTimes({ stats }: { stats: Stats }) {
           <thead>
             <tr>
               <th scope="col">#</th>
-              <th scope="col">Time</th>
+              <th scope="col">{u.unit === 'moves' ? 'Moves' : 'Time'}</th>
               <th scope="col" className="bar-col">
                 <span className="sr-only">Share</span>
               </th>
@@ -53,7 +60,7 @@ export function CommonTimes({ stats }: { stats: Stats }) {
             {rows.map((r, i) => (
               <tr key={r.time}>
                 <td className="muted">{i + 1}</td>
-                <td className="best">{formatTime(r.time, decimals)}</td>
+                <td className="best">{u.unit === 'moves' ? u.single(r.time) : formatTime(r.time, decimals)}</td>
                 <td className="bar-col">
                   <div className="bar" style={{ width: `${(r.count / max) * 100}%` }} />
                 </td>

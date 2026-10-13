@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Chart } from './Chart';
-import { Card, Segmented } from './Card';
-import { axis, base, swatch, timeAxisBounds, timeTick } from '../chartStyle';
-import { formatDate, formatSingle, formatTime } from '../lib/format';
+import { Card, NoFinished, Segmented } from './Card';
+import { axis, base, swatch, timeAxisBounds } from '../chartStyle';
+import { formatDate } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import { quantile, type AvgKey, type Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
@@ -23,6 +24,7 @@ function defaultOn(key: AvgKey, count: number) {
 
 export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
   const [mode, setMode] = useState<XMode>('index');
+  const u = useUnits();
 
   const option = useMemo(() => {
     const { times, dates, rolling, count } = stats;
@@ -66,7 +68,7 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
           const xv = items[0].value[0];
           const head = mode === 'index' ? `Solve #${xv.toLocaleString()}` : formatDate(xv);
           const rows = items
-            .map((it) => `${swatch(it.color)}${it.seriesName} <b style="float:right;margin-left:16px">${(it.seriesName === 'Solves' ? formatSingle : formatTime)(it.value[1])}</b>`)
+            .map((it) => `${swatch(it.color)}${it.seriesName} <b style="float:right;margin-left:16px">${(it.seriesName === 'Solves' ? u.single : u.avg)(it.value[1])}</b>`)
             .join('<br/>');
           return `<div style="margin-bottom:4px;color:${p.textSecondary}">${head}</div>${rows}`;
         },
@@ -79,8 +81,9 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
       }),
       yAxis: axis(p, {
         type: 'value',
-        ...timeAxisBounds(lo, hi),
-        axisLabel: { color: p.textMuted, formatter: timeTick },
+        // No bounds when every solve is a DNF: there's nothing to scale to.
+        ...(Number.isFinite(lo) ? timeAxisBounds(lo, hi) : {}),
+        axisLabel: { color: p.textMuted, formatter: u.tick },
       }),
       dataZoom: [
         { type: 'inside', xAxisIndex: 0, filterMode: 'none' },
@@ -115,7 +118,7 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
         ...lines,
       ],
     };
-  }, [stats, mode, p]);
+  }, [stats, mode, p, u]);
 
   return (
     <Card
@@ -134,7 +137,7 @@ export function TrendChart({ stats, p }: { stats: Stats; p: Palette }) {
         />
       }
     >
-      <Chart option={option} height={380} label="Solve times and rolling averages over time" />
+      {stats.count > stats.dnf ? <Chart option={option} height={380} label="Solve times and rolling averages over time" /> : <NoFinished />}
     </Card>
   );
 }

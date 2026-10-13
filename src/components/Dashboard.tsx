@@ -17,6 +17,8 @@ import type { ApplyEdit, Remap } from '../App';
 import { mapIds } from '../lib/remap';
 import type { FileFormat } from '../lib/parse';
 import { filterByRange, selectSolves, validIds } from '../lib/select';
+import { unitOf, unitsFor } from '../lib/units';
+import { UnitsProvider } from './UnitsContext';
 
 export function Dashboard({ sessions, format, p, onEdit, remap }: { sessions: Session[]; format: FileFormat; p: Palette; onEdit: ApplyEdit; remap: Remap }) {
   const [picked, setSelected] = useState(() => new Set([sessions[0].id]));
@@ -42,7 +44,9 @@ export function Dashboard({ sessions, format, p, onEdit, remap }: { sessions: Se
   const filtered = useMemo(() => filterByRange(merged, range), [merged, range]);
 
   const stats = useMemo(() => computeStats(filtered), [filtered]);
-  const names = sessions.filter((s) => selected.has(s.id)).map((s) => s.name).join(' + ');
+  const shownSessions = sessions.filter((s) => selected.has(s.id));
+  const names = shownSessions.map((s) => s.name).join(' + ');
+  const units = unitsFor(unitOf(shownSessions));
 
   return (
     <div className="dashboard">
@@ -62,9 +66,10 @@ export function Dashboard({ sessions, format, p, onEdit, remap }: { sessions: Se
       {stats.count === 0 ? (
         <div className="card empty">No solves in this date range.</div>
       ) : (
-        <>
+        <UnitsProvider value={units}>
           <p className="range-note">
             <b>{names}</b> · {formatDate(stats.dates[0])} – {formatDate(stats.dates[stats.count - 1])}
+            {units.unit === 'moves' && <> · Fewest Moves, results in moves</>}
           </p>
           <StatsSummary stats={stats} />
           <div className="grid">
@@ -72,13 +77,14 @@ export function Dashboard({ sessions, format, p, onEdit, remap }: { sessions: Se
             <Histogram stats={stats} p={p} />
             <PBHistory stats={stats} p={p} />
             <CommonTimes stats={stats} />
-            <LastDigit stats={stats} p={p} />
+            {/* Every move count ends in .00, so the last digit says nothing for Fewest Moves. */}
+            {units.unit === 'time' && <LastDigit stats={stats} p={p} />}
             <CalendarHeatmap stats={stats} p={p} />
             <TimeOfDay stats={stats} p={p} />
             <WeeklyVolume stats={stats} p={p} />
             <RecentSolves stats={stats} />
           </div>
-        </>
+        </UnitsProvider>
       )}
     </div>
   );

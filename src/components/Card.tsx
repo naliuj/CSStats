@@ -21,6 +21,11 @@ export function Card({ title, sub, controls, children, wide }: {
   );
 }
 
+/** In place of a chart when every solve in view is a DNF. */
+export function NoFinished() {
+  return <p className="muted chart-empty">No finished solves to chart: every one is a DNF.</p>;
+}
+
 export function Segmented<T extends string>({ value, options, onChange, label }: {
   value: T;
   options: { value: T; label: string }[];

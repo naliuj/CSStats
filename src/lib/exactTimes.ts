@@ -1,5 +1,5 @@
-/** Bucket size in ms: 10 = hundredths (as displayed), 100 = tenths. */
-export type Precision = 10 | 100;
+/** Bucket size in ms: 10 = hundredths (as displayed), 100 = tenths, 1000 = whole moves (Fewest Moves). */
+export type Precision = 10 | 100 | 1000;
 
 export interface TimeCount {
   /** Time truncated to the precision, in ms. */

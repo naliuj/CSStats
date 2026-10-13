@@ -3,7 +3,8 @@ import { Chart } from './Chart';
 import { Card, Segmented } from './Card';
 import { base } from '../chartStyle';
 import { byDay } from '../lib/aggregate';
-import { formatDate, formatTime } from '../lib/format';
+import { formatDate } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import type { Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
@@ -13,6 +14,7 @@ export function CalendarHeatmap({ stats, p }: { stats: Stats; p: Palette }) {
   const [picked, setPicked] = useState<string | null>(null);
   const year = picked && years.includes(picked) ? picked : years[0];
 
+  const u = useUnits();
   const option = useMemo(() => {
     const data: [string, number, number][] = [];
     let yearTotal = 0;
@@ -34,7 +36,7 @@ export function CalendarHeatmap({ stats, p }: { stats: Stats; p: Palette }) {
           trigger: 'item',
           formatter: ({ value }: { value: [string, number, number] }) => {
             const [y, m, d] = value[0].split('-').map(Number);
-            return `${formatDate(new Date(y, m - 1, d).getTime())}<br/><b>${value[1].toLocaleString()}</b> solves · mean ${formatTime(value[2])}`;
+            return `${formatDate(new Date(y, m - 1, d).getTime())}<br/><b>${value[1].toLocaleString()}</b> solves · mean ${u.avg(value[2])}`;
           },
         },
         visualMap: {
@@ -59,7 +61,7 @@ export function CalendarHeatmap({ stats, p }: { stats: Stats; p: Palette }) {
         series: [{ type: 'heatmap', coordinateSystem: 'calendar', data }],
       },
     };
-  }, [days, year, p]);
+  }, [days, year, p, u]);
 
   return (
     <Card

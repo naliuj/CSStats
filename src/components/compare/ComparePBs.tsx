@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Chart } from '../Chart';
 import { Card, Segmented } from '../Card';
-import { axis, base, swatch, timeTick } from '../../chartStyle';
-import { formatDate, formatSingle, formatTime } from '../../lib/format';
+import { axis, base, swatch } from '../../chartStyle';
+import { formatDate } from '../../lib/format';
+import { useUnits } from '../UnitsContext';
 import { pbProgression } from '../../lib/pbs';
 import type { Stats } from '../../lib/stats';
 import type { Palette } from '../../theme';
@@ -14,9 +15,10 @@ const seriesOf = (s: Stats, t: Track): ArrayLike<number> => (t === 'single' ? s.
 
 export function ComparePBs({ sides, p }: { sides: Side[]; p: Palette }) {
   const [track, setTrack] = useState<Track>('ao5');
+  const u = useUnits();
 
   const option = useMemo(() => {
-    const fmt = track === 'single' ? formatSingle : formatTime;
+    const fmt = track === 'single' ? u.single : u.avg;
     const series = sides.map((s) => {
       const pts = pbProgression(seriesOf(s.stats, track), s.stats.dates);
       const data = pts.map((pt) => ({ value: [pt.date, pt.value], index: pt.index }));
@@ -46,10 +48,10 @@ export function ComparePBs({ sides, p }: { sides: Side[]; p: Palette }) {
             : `${swatch(color)}${seriesName}<br/>New ${track} PB <b>${fmt(data.value[1])}</b><br/><span style="color:${p.textSecondary}">${formatDate(data.value[0])} · solve #${(data.index + 1).toLocaleString()}</span>`,
       },
       xAxis: axis(p, { type: 'time', splitLine: { show: false } }),
-      yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: timeTick } }),
+      yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: u.tick } }),
       series,
     };
-  }, [sides, track, p]);
+  }, [sides, track, p, u]);
 
   return (
     <Card

@@ -1,15 +1,17 @@
 import { useMemo } from 'react';
 import { Chart } from './Chart';
 import { Card } from './Card';
-import { axis, base, timeTick } from '../chartStyle';
+import { axis, base } from '../chartStyle';
 import { byHour, byWeek, dayKey, type Bucket } from '../lib/aggregate';
-import { formatDate, formatMonth, formatTime } from '../lib/format';
+import { formatDate, formatMonth } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import type { Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
 const hourLabel = (h: number) => `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`;
 
 export function TimeOfDay({ stats, p }: { stats: Stats; p: Palette }) {
+  const u = useUnits();
   const { countOpt, meanOpt, bestHour } = useMemo(() => {
     const hours = byHour(stats.solves);
     const hLabels = hours.map((_, h) => hourLabel(h));
@@ -19,7 +21,7 @@ export function TimeOfDay({ stats, p }: { stats: Stats; p: Palette }) {
       if (b.count >= minN && (bestHour < 0 || b.mean < hours[bestHour].mean)) bestHour = h;
     });
     const tip = (h: number) =>
-      `${hourLabel(h)}m – ${hourLabel((h + 1) % 24)}m<br/><b>${hours[h].count.toLocaleString()}</b> solves · mean <b>${formatTime(hours[h].mean)}</b>`;
+      `${hourLabel(h)}m – ${hourLabel((h + 1) % 24)}m<br/><b>${hours[h].count.toLocaleString()}</b> solves · mean <b>${u.avg(hours[h].mean)}</b>`;
     const common = {
       ...base(p),
       tooltip: { ...base(p).tooltip, trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: p.grid, opacity: 0.6 } }, formatter: (it: { dataIndex: number }[]) => tip(it[0].dataIndex) },
@@ -36,7 +38,7 @@ export function TimeOfDay({ stats, p }: { stats: Stats; p: Palette }) {
       meanOpt: {
         ...common,
         grid: { left: 8, right: 8, top: 12, bottom: 4, containLabel: true },
-        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: timeTick } }),
+        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: u.tick } }),
         series: [
           {
             type: 'line',
@@ -51,7 +53,7 @@ export function TimeOfDay({ stats, p }: { stats: Stats; p: Palette }) {
         ],
       },
     };
-  }, [stats, p]);
+  }, [stats, p, u]);
 
   return (
     <Card
@@ -67,6 +69,7 @@ export function TimeOfDay({ stats, p }: { stats: Stats; p: Palette }) {
 }
 
 export function WeeklyVolume({ stats, p }: { stats: Stats; p: Palette }) {
+  const u = useUnits();
   const { countOpt, meanOpt, weeks } = useMemo(() => {
     const toMs = (k: string) => {
       const [y, m, d] = k.split('-').map(Number);
@@ -84,7 +87,7 @@ export function WeeklyVolume({ stats, p }: { stats: Stats; p: Palette }) {
       }
     }
     const active = keys.length;
-    const tip = (i: number) => `Week of ${formatDate(toMs(w[i][0]))}<br/><b>${w[i][1].count.toLocaleString()}</b> solves · mean <b>${formatTime(w[i][1].mean)}</b>`;
+    const tip = (i: number) => `Week of ${formatDate(toMs(w[i][0]))}<br/><b>${w[i][1].count.toLocaleString()}</b> solves · mean <b>${u.avg(w[i][1].mean)}</b>`;
     const common = {
       ...base(p),
       tooltip: { ...base(p).tooltip, trigger: 'axis', axisPointer: { type: 'shadow', shadowStyle: { color: p.grid, opacity: 0.6 } }, formatter: (it: { dataIndex: number }[]) => tip(it[0].dataIndex) },
@@ -106,7 +109,7 @@ export function WeeklyVolume({ stats, p }: { stats: Stats; p: Palette }) {
       meanOpt: {
         ...common,
         grid: { left: 8, right: 16, top: 12, bottom: 4, containLabel: true },
-        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: timeTick } }),
+        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: u.tick } }),
         series: [
           {
             type: 'line',
@@ -120,7 +123,7 @@ export function WeeklyVolume({ stats, p }: { stats: Stats; p: Palette }) {
         ],
       },
     };
-  }, [stats, p]);
+  }, [stats, p, u]);
 
   return (
     <Card title="Weekly volume" sub={`${weeks.toLocaleString()} weeks with at least one solve.`}>

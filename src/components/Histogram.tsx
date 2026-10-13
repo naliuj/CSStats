@@ -1,19 +1,23 @@
 import { useMemo, useState } from 'react';
 import { Chart } from './Chart';
-import { Card, Segmented } from './Card';
-import { axis, base, timeTick } from '../chartStyle';
-import { formatTime } from '../lib/format';
+import { Card, NoFinished, Segmented } from './Card';
+import { axis, base } from '../chartStyle';
+import { useUnits } from './UnitsContext';
 import { quantile, type Stats } from '../lib/stats';
 import { binWidth, type Density } from '../lib/compare';
 import type { Palette } from '../theme';
 
 export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
   const [density, setDensity] = useState<Density>('auto');
+  const u = useUnits();
+  const finished = stats.count - stats.dnf;
 
   const option = useMemo(() => {
+    if (!finished) return null;
     const lo = quantile(stats.times, 0);
     const hi = quantile(stats.times, 0.99);
-    const w = binWidth(lo, hi, density);
+    // Fewest Moves bins are whole moves.
+    const w = u.unit === 'moves' ? Math.max(1000, Math.round(binWidth(lo, hi, density) / 1000) * 1000) : binWidth(lo, hi, density);
     const start = Math.floor(lo / w) * w;
     const nBins = Math.max(1, Math.floor((hi - start) / w) + 1);
     const counts = new Array(nBins).fill(0);
@@ -33,7 +37,8 @@ export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
         trigger: 'item',
         formatter: ({ value }: { value: [number, number] }) => {
           const a = value[0] - w / 2;
-          return `${formatTime(a)} – ${formatTime(a + w)}<br/><b>${value[1].toLocaleString()}</b> solves (${((value[1] / total) * 100).toFixed(1)}%)`;
+          const range = u.unit === 'moves' && w === 1000 ? `${u.single(a)} moves` : `${u.avg(a)} – ${u.avg(a + w)}`;
+          return `${range}<br/><b>${value[1].toLocaleString()}</b> solves (${((value[1] / total) * 100).toFixed(1)}%)`;
         },
       },
       xAxis: axis(p, {
@@ -41,7 +46,7 @@ export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
         min: start,
         max: start + nBins * w,
         splitLine: { show: false },
-        axisLabel: { color: p.textMuted, formatter: timeTick, hideOverlap: true, showMinLabel: false, showMaxLabel: false },
+        axisLabel: { color: p.textMuted, formatter: u.tick, hideOverlap: true, showMinLabel: false, showMaxLabel: false },
       }),
       yAxis: axis(p, { type: 'value', minInterval: 1 }),
       series: [
@@ -55,13 +60,13 @@ export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
             symbol: 'none',
             silent: true,
             lineStyle: { color: p.textSecondary, type: 'dashed', width: 1 },
-            label: { color: p.textSecondary, formatter: `mean ${formatTime(stats.mean)}`, position: 'end' },
+            label: { color: p.textSecondary, formatter: `mean ${u.avg(stats.mean)}`, position: 'end' },
             data: Number.isFinite(stats.mean) ? [{ xAxis: stats.mean }] : [],
           },
         },
       ],
     };
-  }, [stats, density, p]);
+  }, [stats, density, p, u, finished]);
 
   return (
     <Card
@@ -80,7 +85,7 @@ export function Histogram({ stats, p }: { stats: Stats; p: Palette }) {
         />
       }
     >
-      <Chart option={option} height={300} label="Histogram of solve times" />
+      {option ? <Chart option={option} height={300} label="Histogram of solve times" /> : <NoFinished />}
     </Card>
   );
 }

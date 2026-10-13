@@ -98,7 +98,7 @@ export function parsePTimer(doc: PtDoc): Session[] {
       (r): Solve => ({ raw: r.raw, penalty: r.penalty, time: r.penalty === -1 ? Infinity : r.raw + r.penalty, scramble: r.scramble, comment: r.comment, date: r.date }),
     );
     if (!solves.length) continue;
-    sessions.push({ id: String(s.id), name: s.name || `Session ${s.id}`, scrType: s.event, rank: s.rank, solves });
+    sessions.push({ id: String(s.id), name: s.name || `Session ${s.id}`, scrType: s.event, rank: s.rank, solves, ...(s.event === '333fm' ? { unit: 'moves' as const } : {}) });
   }
   if (!sessions.length) throw new ParseError('No solves found in that PTimer file.');
   return sessions;

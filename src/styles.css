@@ -956,3 +956,30 @@ label:focus-within {
   z-index: 1;
   background: var(--surface);
 }
+
+/* Empty and error states */
+.chart-empty {
+  margin: 0;
+  padding: 48px 16px;
+  text-align: center;
+}
+.card.crash {
+  margin-top: 16px;
+  text-align: center;
+  padding: 32px 16px;
+}
+.card.crash h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.card.crash code {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+.crash-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}

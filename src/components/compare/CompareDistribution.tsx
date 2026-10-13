@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Chart } from '../Chart';
 import { Card, Segmented } from '../Card';
-import { axis, base, swatch, timeTick } from '../../chartStyle';
-import { formatTime } from '../../lib/format';
+import { axis, base, swatch } from '../../chartStyle';
+import { useUnits } from '../UnitsContext';
 import { sharedHistogram, type Density } from '../../lib/compare';
 import type { Palette } from '../../theme';
 import type { Side } from './CompareView';
 
 export function CompareDistribution({ sides, p }: { sides: Side[]; p: Palette }) {
   const [density, setDensity] = useState<Density>('auto');
+  const u = useUnits();
 
   const option = useMemo(() => {
-    const h = sharedHistogram(sides.map((s) => s.stats.times), density);
+    const h = sharedHistogram(sides.map((s) => s.stats.times), density, u.unit === 'moves' ? 1000 : undefined);
     return {
       ...base(p),
       legend: { ...base(p).legend, type: 'scroll', right: 0 },
@@ -24,7 +25,7 @@ export function CompareDistribution({ sides, p }: { sides: Side[]; p: Palette })
           if (!items.length) return '';
           const a = items[0].value[0] - h.width / 2;
           const rows = items.map((it) => `${swatch(it.color)}${it.seriesName} <b style="float:right;margin-left:16px">${it.value[1].toFixed(1)}%</b>`).join('<br/>');
-          return `<div style="margin-bottom:4px;color:${p.textSecondary}">${formatTime(a)} – ${formatTime(a + h.width)}</div>${rows}`;
+          return `<div style="margin-bottom:4px;color:${p.textSecondary}">${u.unit === 'moves' && h.width === 1000 ? `${u.single(a)} moves` : `${u.avg(a)} – ${u.avg(a + h.width)}`}</div>${rows}`;
         },
       },
       xAxis: axis(p, {
@@ -32,7 +33,7 @@ export function CompareDistribution({ sides, p }: { sides: Side[]; p: Palette })
         min: h.start,
         max: h.start + h.centers.length * h.width,
         splitLine: { show: false },
-        axisLabel: { color: p.textMuted, formatter: timeTick, hideOverlap: true, showMinLabel: false, showMaxLabel: false },
+        axisLabel: { color: p.textMuted, formatter: u.tick, hideOverlap: true, showMinLabel: false, showMaxLabel: false },
       }),
       yAxis: axis(p, { type: 'value', axisLabel: { color: p.textMuted, formatter: (v: number) => `${v}%` } }),
       series: sides.map((s, i) => ({
@@ -47,7 +48,7 @@ export function CompareDistribution({ sides, p }: { sides: Side[]; p: Palette })
         emphasis: { disabled: true },
       })),
     };
-  }, [sides, density, p]);
+  }, [sides, density, p, u]);
 
   return (
     <Card

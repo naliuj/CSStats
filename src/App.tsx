@@ -9,6 +9,7 @@ import { UploadDropzone } from './components/UploadDropzone';
 import { Dashboard } from './components/Dashboard';
 import { CompareView, type CompareFile } from './components/compare/CompareView';
 import { Segmented } from './components/Card';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 const STORE_KEY = 'csstats-export';
 const COMPARE_KEY = 'csstats-compare';
@@ -256,9 +257,12 @@ export default function App() {
             </div>
             {/* Both stay mounted so each keeps its selections when switching. */}
             <div hidden={view !== 'dashboard'}>
-              <Dashboard key={loaded.name} sessions={loaded.sessions} format={loaded.format} p={palette} onEdit={applyEdit} remap={remap} />
+              <ErrorBoundary what="the dashboard" onClear={clear} resetKey={loaded.text}>
+                <Dashboard key={loaded.name} sessions={loaded.sessions} format={loaded.format} p={palette} onEdit={applyEdit} remap={remap} />
+              </ErrorBoundary>
             </div>
             <div hidden={view !== 'compare'}>
+              <ErrorBoundary what="the comparison" onClear={clear} resetKey={loaded.text + compareFiles.length}>
               <CompareView
                 key={loaded.name}
                 mainName={loaded.name}
@@ -269,6 +273,7 @@ export default function App() {
                 onRemoveFile={(id) => saveCompare(compareFiles.filter((f) => f.id !== id))}
                 p={palette}
               />
+              </ErrorBoundary>
             </div>
           </>
         ) : (

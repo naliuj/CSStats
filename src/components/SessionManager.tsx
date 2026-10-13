@@ -28,6 +28,8 @@ function span(s: Session) {
   return a === b ? a : `${a} – ${b}`;
 }
 
+const solvesText = (n: number) => `${n.toLocaleString()} solve${n === 1 ? '' : 's'}`;
+
 type View = { kind: 'list' } | { kind: 'merge'; ids: string[] } | { kind: 'import'; name: string; doc: CsDoc; sessions: Session[] };
 
 // PTimer always shows a session's solves in date order, so merges into a PTimer file are by date.
@@ -197,9 +199,9 @@ export function SessionManager({ sessions, format, onEdit, onSelect, onClose }: 
             });
             const into = plan.filter((p) => p.into !== 'new').length;
             const fresh = plan.length - into;
-            const parts = [`Imported ${result.added.toLocaleString()} solves`];
+            const parts = [`Imported ${solvesText(result.added)}`];
             if (fresh) parts.push(`${fresh} new session${fresh > 1 ? 's' : ''}`);
-            if (result.skipped) parts.push(`${result.skipped.toLocaleString()} duplicates skipped`);
+            if (result.skipped) parts.push(`${result.skipped.toLocaleString()} duplicate${result.skipped === 1 ? '' : 's'} skipped`);
             setNote({ text: parts.join(' · ') + '.' });
             setView({ kind: 'list' });
           }}
@@ -250,7 +252,7 @@ function MergeForm({ dateOnly, picked, onBack, onMerge }: {
         e.preventDefault();
         onMerge(
           { targetId, sourceIds: sources.map((s) => s.id), mode, name, dedupe },
-          `Merged ${picked.length} sessions into “${name.trim() || target.name}” (${total.toLocaleString()} solves).`,
+          `Merged ${picked.length} sessions into “${name.trim() || target.name}” (${solvesText(total)}).`,
         );
       }}
     >
@@ -275,7 +277,7 @@ function MergeForm({ dateOnly, picked, onBack, onMerge }: {
               />
               <span>{s.name}</span>
               <span className="muted">
-                {eventName(s.scrType)} · {s.solves.length.toLocaleString()} solves · {span(s)}
+                {eventName(s.scrType)} · {solvesText(s.solves.length)} · {span(s)}
               </span>
               <span className={`role-tag${s.id === targetId ? ' keep' : ''}`}>{s.id === targetId ? 'Kept' : 'Merged in, then removed'}</span>
             </label>
@@ -328,7 +330,7 @@ function MergeForm({ dateOnly, picked, onBack, onMerge }: {
 
       <div className="preview">
         <div>
-          <b>{total.toLocaleString()}</b> solves in “{name.trim() || target.name}”
+          <b>{total.toLocaleString()}</b> solve{total === 1 ? '' : 's'} in “{name.trim() || target.name}”
           {dupes > 0 && <span className="muted"> · {dupes.toLocaleString()} duplicates skipped</span>}
         </div>
         {events.size > 1 && <p className="warn">These sessions use different puzzles or scramble types ({[...events.values()].join(', ')}).</p>}
@@ -462,7 +464,7 @@ function ImportForm({ dateOnly, name, theirs, ours, onBack, onImport }: {
       <div className="preview">
         {plan.length ? (
           <div>
-            Adds <b>{adds.toLocaleString()}</b> solves
+            Adds <b>{adds.toLocaleString()}</b> solve{adds === 1 ? '' : 's'}
             {fresh > 0 && <> · {fresh} new session{fresh > 1 ? 's' : ''}</>}
             {dupes > 0 && <span className="muted"> · {dupes.toLocaleString()} duplicates skipped</span>}
           </div>

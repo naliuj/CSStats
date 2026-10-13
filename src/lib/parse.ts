@@ -1,6 +1,7 @@
 import type { Penalty, Session, Solve } from './types';
 import { ParseError } from './errors';
 import { isPTimerDoc, parsePTimer } from './ptimer';
+import { looksLikeMoves } from './units';
 
 interface SessionMeta {
   name?: string | number;
@@ -79,12 +80,14 @@ function parseCstimer(raw: unknown): Session[] {
     }
     if (!solves.length) continue;
     const info = meta[id] ?? {};
+    const scrType = info.opt?.scrType ?? '333';
     sessions.push({
       id,
       name: info.name != null && String(info.name) !== '' ? String(info.name) : `Session ${id}`,
-      scrType: info.opt?.scrType ?? '333',
+      scrType,
       rank: typeof info.rank === 'number' ? info.rank : Number(id),
       solves,
+      ...(looksLikeMoves(scrType, solves.map((s) => s.raw)) ? { unit: 'moves' as const } : {}),
     });
   }
 

@@ -25,13 +25,14 @@ export interface SharedHistogram {
  * Histograms over the same bins for several sets of times, as percentages so sides with
  * different solve counts are comparable. The slowest 1% of each side is left out of the scale.
  */
-export function sharedHistogram(sides: readonly (readonly number[])[], density: Density = 'auto'): SharedHistogram {
+export function sharedHistogram(sides: readonly (readonly number[])[], density: Density = 'auto', step?: number): SharedHistogram {
   const los = sides.map((t) => quantile(t, 0)).filter(Number.isFinite);
   const his = sides.map((t) => quantile(t, 0.99)).filter(Number.isFinite);
   if (!los.length) return { start: 0, width: 1000, centers: [], percent: sides.map(() => []) };
   const lo = Math.min(...los);
   const hi = Math.max(...his);
-  const width = binWidth(lo, hi, density);
+  // `step` keeps bins whole multiples of it (1000 = whole moves for Fewest Moves).
+  const width = step ? Math.max(step, Math.round(binWidth(lo, hi, density) / step) * step) : binWidth(lo, hi, density);
   const start = Math.floor(lo / width) * width;
   const n = Math.max(1, Math.floor((hi - start) / width) + 1);
   const centers = Array.from({ length: n }, (_, i) => start + i * width + width / 2);

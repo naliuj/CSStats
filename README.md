@@ -13,6 +13,7 @@ Statistics and trends for your [csTimer](https://cstimer.net) and PTimer solves.
 - **Time of day and weekly volume**: when you practice, and how fast you are at each hour and week
 - **Solves**: recent solves with ao5/ao12 and scrambles
 - Filter by session (Ctrl/⌘-click to combine sessions) and by date range
+- **Fewest Moves**: FMC sessions show results in moves (singles like "28", means like "29.33"), counted and charted by whole moves. PTimer FMC sessions are recognized by their event; csTimer ones when every result is a whole number of moves.
 - **Compare**: put up to four sessions side by side, from this file or from other exports you load for comparison. Each side has its own sessions and date range. You get a stats table with differences from the first side, plus overlaid progress, distribution and personal-best charts. Comparison files are remembered and are never edited.
 - **Edit sessions**: merge sessions (interleaved by date, or appended in an order you choose), and import sessions from another csTimer export, either as new sessions or merged into existing ones. Duplicate solves are skipped when files share history. Edits can be undone or reverted, and **Download for csTimer** gives you a file to import back into csTimer.
 

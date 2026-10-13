@@ -1,13 +1,15 @@
 import { useMemo } from 'react';
 import { Chart } from './Chart';
-import { Card } from './Card';
-import { axis, base, swatch, timeTick } from '../chartStyle';
-import { formatDate, formatSingle, formatTime } from '../lib/format';
+import { Card, NoFinished } from './Card';
+import { axis, base, swatch } from '../chartStyle';
+import { formatDate } from '../lib/format';
+import { useUnits } from './UnitsContext';
 import { pbProgression } from '../lib/pbs';
 import type { Stats } from '../lib/stats';
 import type { Palette } from '../theme';
 
 export function PBHistory({ stats, p }: { stats: Stats; p: Palette }) {
+  const u = useUnits();
   const { option, total } = useMemo(() => {
     const tracks = [
       { name: 'single', series: stats.times as ArrayLike<number>, slot: 0 },
@@ -47,22 +49,22 @@ export function PBHistory({ stats, p }: { stats: Stats; p: Palette }) {
           ...base(p).tooltip,
           trigger: 'item',
           formatter: ({ seriesName, data, color }: { seriesName: string; color: string; data: { value: [number, number]; index: number } }) => {
-            const fmt = seriesName === 'single' ? formatSingle : formatTime;
+            const fmt = seriesName === 'single' ? u.single : u.avg;
             return data.index < 0
               ? `${swatch(color)}Current ${seriesName} PB <b>${fmt(data.value[1])}</b>`
               : `${swatch(color)}New ${seriesName} PB <b>${fmt(data.value[1])}</b><br/><span style="color:${p.textSecondary}">${formatDate(data.value[0])} · solve #${(data.index + 1).toLocaleString()}</span>`;
           },
         },
         xAxis: axis(p, { type: 'time', splitLine: { show: false } }),
-        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: timeTick } }),
+        yAxis: axis(p, { type: 'value', scale: true, axisLabel: { color: p.textMuted, formatter: u.tick } }),
         series,
       },
     };
-  }, [stats, p]);
+  }, [stats, p, u]);
 
   return (
     <Card title="Personal bests" sub={`${total.toLocaleString()} PBs set in this range. Each step is a new record.`}>
-      <Chart option={option} height={300} label="Personal best progression over time" />
+      {total ? <Chart option={option} height={300} label="Personal best progression over time" /> : <NoFinished />}
     </Card>
   );
 }

@@ -1,6 +1,7 @@
 import { AVERAGES, type Stats } from '../../lib/stats';
 import { delta } from '../../lib/compare';
-import { formatDuration, formatSingle, formatTime } from '../../lib/format';
+import { formatDuration } from '../../lib/format';
+import type { Units } from '../../lib/units';
 import type { Side } from './CompareView';
 
 type Kind = 'time' | 'single' | 'count' | 'duration' | 'pct';
@@ -28,19 +29,20 @@ const ROWS: Row[] = [
   { label: '+2 rate', kind: 'pct', get: (s) => pct(s.plus2, s.count), lowerBetter: true },
 ];
 
-function fmt(kind: Kind, v: number) {
+function fmt(kind: Kind, v: number, u: Units) {
   if (kind === 'count') return v.toLocaleString();
-  if (kind === 'duration') return formatDuration(v);
+  // Move counts don't add up to time spent.
+  if (kind === 'duration') return u.unit === 'moves' ? '–' : formatDuration(v);
   if (kind === 'pct') return Number.isNaN(v) ? '–' : `${v.toFixed(1)}%`;
-  if (kind === 'single') return formatSingle(v);
-  return formatTime(v);
+  if (kind === 'single') return u.single(v);
+  return u.avg(v);
 }
 
-function Delta({ kind, a, b }: { kind: Kind; a: number; b: number }) {
+function Delta({ kind, a, b, u }: { kind: Kind; a: number; b: number; u: Units }) {
   const d = delta(a, b);
   if (Number.isNaN(d) || d === 0 || kind === 'count' || kind === 'duration') return null;
   const faster = d < 0;
-  const text = kind === 'pct' ? `${Math.abs(d).toFixed(1)}` : formatTime(Math.abs(d));
+  const text = kind === 'pct' ? `${Math.abs(d).toFixed(1)}` : kind === 'single' && u.unit === 'moves' ? u.single(Math.abs(d)) : u.avg(Math.abs(d));
   return (
     <span className={`delta ${faster ? 'better' : 'worse'}`} title={`${faster ? 'Lower' : 'Higher'} than A`}>
       {faster ? '▼' : '▲'}
@@ -52,6 +54,7 @@ function Delta({ kind, a, b }: { kind: Kind; a: number; b: number }) {
 export function CompareTable({ sides }: { sides: Side[] }) {
   const rows = ROWS.filter((r) => sides.some((s) => s.stats.count && Number.isFinite(r.get(s.stats)) && !Number.isNaN(r.get(s.stats))));
   const a = sides[0];
+  const sameUnit = sides.every((s) => s.units.unit === a.units.unit);
 
   return (
     <section className="card compare-card">
@@ -73,14 +76,15 @@ export function CompareTable({ sides }: { sides: Side[] }) {
             {rows.map((r) => {
               const values = sides.map((s) => (s.stats.count ? r.get(s.stats) : NaN));
               const finite = values.filter(Number.isFinite);
-              const best = r.lowerBetter && sides.length > 1 && finite.length > 1 ? Math.min(...finite) : NaN;
+              const best = r.lowerBetter && sameUnit && sides.length > 1 && finite.length > 1 ? Math.min(...finite) : NaN;
               return (
                 <tr key={r.label}>
                   <th scope="row">{r.label}</th>
                   {values.map((v, i) => (
                     <td key={sides[i].letter} className={v === best ? 'best' : ''}>
-                      {sides[i].stats.count ? fmt(r.kind, v) : '–'}
-                      {i > 0 && a.stats.count > 0 && <Delta kind={r.kind} a={values[0]} b={v} />}
+                      {sides[i].stats.count ? fmt(r.kind, v, sides[i].units) : '–'}
+                      {/* Times and move counts can't be subtracted from each other. */}
+                      {i > 0 && a.stats.count > 0 && a.units.unit === sides[i].units.unit && <Delta kind={r.kind} a={values[0]} b={v} u={a.units} />}
                     </td>
                   ))}
                 </tr>

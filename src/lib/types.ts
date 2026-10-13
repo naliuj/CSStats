@@ -18,4 +18,6 @@ export interface Session {
   scrType: string;
   rank: number;
   solves: Solve[];
+  /** 'moves' for Fewest Moves sessions, whose results are move counts ×1000. */
+  unit?: 'time' | 'moves';
 }
